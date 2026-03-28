@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Toaster } from 'react-hot-toast';
 import DomainInput from './components/DomainInput';
 import ScriptOutput from './components/ScriptOutput';
+import ManualTerminal from './components/ManualTerminal';
 import SchedulerPanel from './components/SchedulerPanel';
 import MikroTikPush from './components/MikroTikPush';
 import useResolver from './hooks/useResolver';
@@ -11,7 +12,7 @@ export default function App() {
   const [listName, setListName] = useState('blocked_sites');
   const [addFirewallRule, setAddFirewallRule] = useState(true);
   const { resolved, script, loading, error, resolve } = useResolver();
-  const [activeTab, setActiveTab] = useState('script');
+  const [activeTab, setActiveTab] = useState('terminal');
 
   const handleResolve = useCallback((domains) => {
     resolve(domains, { listName, addFirewallRule });
@@ -19,7 +20,10 @@ export default function App() {
 
   return (
     <div className="app">
-      <Toaster position="top-right" toastOptions={{ style: { background: '#1a1d2e', color: '#e8eaf6', border: '1px solid #2e3150' } }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{ style: { background: '#1a1d2e', color: '#e8eaf6', border: '1px solid #2e3150' } }}
+      />
 
       <header className="app-header">
         <div className="header-inner">
@@ -38,6 +42,7 @@ export default function App() {
       </header>
 
       <main className="app-main">
+        {/* LEFT PANEL */}
         <div className="left-panel">
           <DomainInput onResolve={handleResolve} loading={loading} />
 
@@ -68,6 +73,7 @@ export default function App() {
           <SchedulerPanel onResolve={handleResolve} />
         </div>
 
+        {/* RIGHT PANEL */}
         <div className="right-panel">
           {error && <div className="error-banner">⚠️ {error}</div>}
 
@@ -88,13 +94,37 @@ export default function App() {
             </div>
           )}
 
+          {/* TABS */}
           <div className="tab-bar">
-            <button className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`} onClick={() => setActiveTab('script')}>📜 Script</button>
-            <button className={`tab-btn ${activeTab === 'push' ? 'active' : ''}`} onClick={() => setActiveTab('push')}>🚀 API Push</button>
+            <button
+              className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
+              onClick={() => setActiveTab('terminal')}
+            >
+              🖥️ Terminal Commands
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`}
+              onClick={() => setActiveTab('script')}
+            >
+              📜 Full Script (.rsc)
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'push' ? 'active' : ''}`}
+              onClick={() => setActiveTab('push')}
+            >
+              🚀 API Push
+            </button>
           </div>
 
-          {activeTab === 'script' && <ScriptOutput script={script} loading={loading} />}
-          {activeTab === 'push' && <MikroTikPush script={script} />}
+          {activeTab === 'terminal' && (
+            <ManualTerminal resolved={resolved} listName={listName} />
+          )}
+          {activeTab === 'script' && (
+            <ScriptOutput script={script} loading={loading} />
+          )}
+          {activeTab === 'push' && (
+            <MikroTikPush script={script} />
+          )}
         </div>
       </main>
     </div>

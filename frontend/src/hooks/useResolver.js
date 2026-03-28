@@ -22,6 +22,8 @@ export default function useResolver() {
         addFilter:   options.addFilter   !== false,
         addSrcBlock: options.addSrcBlock || false,
         includeIPv6: options.includeIPv6 !== false,
+        addLayer7:   options.addLayer7   || false,
+        routerOS:    options.routerOS    || 'v7',
         category:    options.category    || null,
       });
       setResolved(data.resolved);

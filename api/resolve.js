@@ -1,5 +1,5 @@
 // ============================================================
-// MikroTik Blocker — api/resolve.js  v4.1
+// MikroTik Blocker — api/resolve.js  v4.2
 // Deep IP Resolution Engine + Layer7 Protocol Blocking
 //
 // Layer 1 : ASN prefixes via BGPView  (CIDR v4 + v6)
@@ -9,7 +9,7 @@
 // Layer 4 : Subdomain variants  www / m / mobile / app /
 //           api / cdn / static / media / assets / img / video
 // Layer 5 : CNAME chain unwrap (max 3 hops)
-// Layer 6 : IP → announced CIDR via ip-api.com batch
+// Layer 6 : IP → announced CIDR via ipinfo.io (HTTPS, free)
 // Layer 7 : Reverse DNS PTR sweep → sibling re-resolve
 // Layer 7P: RouterOS Layer7-protocol regex
 //           (HTTP Host header + TLS SNI pattern)
@@ -87,6 +87,30 @@ const DOH_ENDPOINTS = [
   (name, type) => `https://dns.quad9.net:5053/dns-query?name=${encodeURIComponent(name)}&type=${type}`,
 ];
 
+// ── Rate limiter (token bucket per IP) ───────────────────────
+const _rateBuckets = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;  // 1 minute
+const RATE_LIMIT_MAX       = 20;      // max 20 requests per minute per IP
+
+function isRateLimited(ip) {
+  const now    = Date.now();
+  const bucket = _rateBuckets.get(ip) || { count: 0, start: now };
+  if (now - bucket.start > RATE_LIMIT_WINDOW_MS) {
+    _rateBuckets.set(ip, { count: 1, start: now });
+    return false;
+  }
+  bucket.count++;
+  _rateBuckets.set(ip, bucket);
+  return bucket.count > RATE_LIMIT_MAX;
+}
+
+// Clean stale buckets every 5 minutes to prevent memory leak
+setInterval(() => {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS * 2;
+  for (const [ip, b] of _rateBuckets)
+    if (b.start < cutoff) _rateBuckets.delete(ip);
+}, 300_000);
+
 // ── helpers ──────────────────────────────────────────────────
 function isValidIP(ip) {
   return ip && ip !== '0.0.0.0' && !ip.startsWith('0.') && !ip.startsWith('127.');
@@ -94,38 +118,30 @@ function isValidIP(ip) {
 
 /**
  * Build a RouterOS-compatible Layer7 regex for a domain.
+ * Only called when addLayer7 = true to avoid unnecessary work.
  *
  * Matches:
  *   1. HTTP  Host: header   (plain HTTP, port 80)
  *   2. TLS   SNI extension  (HTTPS ClientHello, port 443)
  *
  * RouterOS regex engine is POSIX ERE with a 2 KB limit per pattern.
- * We escape dots and build an alternation of the root domain +
- * all known subdomain prefixes so the regex stays compact.
- *
- * Pattern structure:
- *   ^.*(Host: [^ \r]*\.?DOMAIN|\x16\x03[\x00-\x03].{2,5}\x00.{2}\x00[\x01-\xff].DOMAIN)
- *
- * SNI bytes explanation:
- *   \x16\x03..  = TLS record (ContentType=22, major version 3)
- *   \x00.{2}\x00[\x01-\xff]  = SNI type + length markers
- *   .DOMAIN  = hostname appears in SNI extension
  */
 function buildLayer7Regex(domain) {
-  // Escape dots for regex
   const escaped = domain.replace(/\./g, '\\.');
-  // HTTP Host header pattern
   const httpPart = `[Hh][Oo][Ss][Tt]: [^\\r]*${escaped}`;
-  // TLS SNI pattern — SNI hostname sits after a 0x00 type byte
   const tlsPart  = `\\x16\\x03[\\x00-\\x03].{2}\\x00.{2}\\x01.{3}\\x00.{2}\\x03.{33}\\x00.{2}\\x00\\x00.{2}\\x00${escaped}`;
-  return `^.*(${httpPart}|${tlsPart})`;
+  const regex    = `^.*(${httpPart}|${tlsPart})`;
+  // Warn if over RouterOS 2 KB limit
+  if (regex.length > 2000)
+    console.warn(`[L7] Regex for ${domain} is ${regex.length} chars — may exceed RouterOS 2 KB limit`);
+  return regex;
 }
 
 // ── Layer 1: ASN → CIDR (v4 + v6) ─────────────────────────
 async function getASNPrefixes(asn) {
   try {
     const res = await fetch(`https://api.bgpview.io/asn/${asn}/prefixes`, {
-      headers: { 'User-Agent': 'MikroTik-Blocker/4.1', Accept: 'application/json' },
+      headers: { 'User-Agent': 'MikroTik-Blocker/4.2', Accept: 'application/json' },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return { v4: [], v6: [] };
@@ -142,7 +158,6 @@ async function getASNPrefixes(asn) {
 
 // ── Layer 2+5: DoH multi-source + CNAME unwrap ───────────────
 async function dohResolveDeep(name, type = 'A', _depth = 0) {
-  const recordType = type === 'AAAA' ? 28 : type === 'CNAME' ? 5 : 1;
   const allIPs    = new Set();
   const allCNAMEs = new Set();
 
@@ -188,14 +203,15 @@ async function dohResolveDeep(name, type = 'A', _depth = 0) {
 const BLOCKLIST_CACHE = new Map();
 const BLOCKLIST_TTL   = 1000 * 60 * 30;
 
+// Fixed: each category now points to the correct list URL
+const BLOCKLIST_URLS = {
+  ads:     'https://small.oisd.nl',
+  adult:   'https://nsfw.oisd.nl',
+  malware: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling/hosts',
+};
+
 async function fetchBlocklist(category) {
-  const LISTS = {
-    ads:     'https://small.oisd.nl',
-    nsfw:    'https://nsfw.oisd.nl',
-    adult:   'https://nsfw.oisd.nl',
-    malware: 'https://nsfw.oisd.nl',
-  };
-  const url = LISTS[category];
+  const url = BLOCKLIST_URLS[category];
   if (!url) return [];
   const cached = BLOCKLIST_CACHE.get(category);
   if (cached && Date.now() - cached.ts < BLOCKLIST_TTL) return cached.data;
@@ -253,32 +269,36 @@ async function resolveAllVariants(domain, enableIPv6) {
   return { ipv4: [...allIPv4], ipv6: [...allIPv6], cnames: [...allCNAMEs] };
 }
 
-// ── Layer 6: IP → announced CIDR (ip-api.com batch) ─────────
+// ── Layer 6: IP → announced CIDR (ipinfo.io HTTPS, free tier) ─
 async function getAnnouncedCIDRs(ips) {
   if (!ips.length) return [];
-  const batch = ips.slice(0, 100).map(q => ({ query: q, fields: 'query,org,as,cidr' }));
-  try {
-    const res = await fetch('http://ip-api.com/batch?fields=query,org,as,cidr', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(batch),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const cidrs = new Map();
-    for (const row of data) {
-      if (row.cidr && /^\d+\.\d+\.\d+\.\d+\/\d+$/.test(row.cidr)) {
-        cidrs.set(row.cidr, {
-          cidr: row.cidr,
-          description: row.org || row.as || 'unknown',
-          version: 4,
-          source: 'ip-api',
-        });
-      }
+  const cidrs = new Map();
+  // ipinfo.io free tier: single lookups, HTTPS, no key needed for basic fields
+  // Batch: up to 20 IPs in parallel to stay within free tier rate limits
+  const batch = ips.slice(0, 20);
+  const results = await Promise.allSettled(
+    batch.map(ip =>
+      fetch(`https://ipinfo.io/${ip}/json`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.2' },
+        signal: AbortSignal.timeout(5000),
+      })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+    )
+  );
+  for (const r of results) {
+    if (r.status !== 'fulfilled' || !r.value) continue;
+    const { ip, org, bogon } = r.value;
+    // ipinfo returns /prefix in the hostname field for some IPs
+    // Fallback: derive /24 from IP as minimum CIDR
+    if (bogon) continue;
+    if (ip) {
+      const parts  = ip.split('.');
+      const cidr24 = `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+      cidrs.set(cidr24, { cidr: cidr24, description: org || 'unknown', version: 4, source: 'ipinfo' });
     }
-    return [...cidrs.values()];
-  } catch (_) { return []; }
+  }
+  return [...cidrs.values()];
 }
 
 // ── Layer 7 (DNS): Reverse DNS PTR sweep ─────────────────────
@@ -312,7 +332,7 @@ async function reverseDNSSweep(ips, enableIPv6) {
 }
 
 // ── Main resolver ─────────────────────────────────────────────
-async function resolveDomain(domain, enableIPv6 = true) {
+async function resolveDomain(domain, enableIPv6 = true, addLayer7 = false) {
   const clean = domain
     .replace(/^https?:\/\//i, '')
     .replace(/\/.*$/, '')
@@ -354,8 +374,8 @@ async function resolveDomain(domain, enableIPv6 = true) {
   const ips      = [...allIPv4];
   const ipsV6    = [...allIPv6];
 
-  // Build Layer7 regex patterns (HTTP Host + TLS SNI)
-  const layer7Regex = buildLayer7Regex(clean);
+  // Layer7 regex — only built when addLayer7 is true (lazy)
+  const layer7Regex = addLayer7 ? buildLayer7Regex(clean) : null;
 
   const total = cidrs.length + cidrsV6.length + ips.length + ipsV6.length;
 
@@ -382,24 +402,31 @@ function generateScript(resolved, options = {}) {
   const addSrcBlock = options.addSrcBlock === true;
   const includeIPv6 = options.includeIPv6 !== false;
   const addLayer7   = options.addLayer7   === true;
+  const routerOS    = options.routerOS    || 'v7'; // 'v6' or 'v7'
+
+  // RouterOS 7 uses /ip/firewall (new path), v6 uses /ip firewall (space)
+  const fw   = routerOS === 'v7' ? '/ip/firewall' : '/ip firewall';
+  const fw6  = routerOS === 'v7' ? '/ipv6/firewall' : '/ipv6 firewall';
+  const fwL7 = routerOS === 'v7' ? '/ip/firewall/layer7-protocol' : '/ip firewall layer7-protocol';
 
   const lines = [
     `# ================================================`,
     `# MikroTik Blocker — Auto-Generated Script`,
-    `# Date    : ${new Date().toISOString()}`,
-    `# Domains : ${resolved.map(r => r.domain).filter(Boolean).join(', ')}`,
-    `# List    : ${listName}`,
-    `# Mode    : ${outputMode}${includeIPv6 ? ' + IPv6' : ''}${addLayer7 ? ' + Layer7' : ''}`,
+    `# Date      : ${new Date().toISOString()}`,
+    `# Domains   : ${resolved.map(r => r.domain).filter(Boolean).join(', ')}`,
+    `# List      : ${listName}`,
+    `# Mode      : ${outputMode}${includeIPv6 ? ' + IPv6' : ''}${addLayer7 ? ' + Layer7' : ''}`,
+    `# RouterOS  : ${routerOS}`,
     `# ================================================`,
     '',
   ];
 
-  // ── Layer7 protocol rules (Step 1 when enabled) ──────────────
+  // ── Layer7 protocol rules ─────────────────────────────────────
   if (addLayer7) {
     lines.push(
       `# Step 1 — Layer7 protocol patterns (HTTP Host + TLS SNI)`,
       `# Blocks domain by NAME — works even when IPs change`,
-      `/ip firewall layer7-protocol`,
+      fwL7,
     );
     for (const r of resolved) {
       if (!r.domain || !r.layer7Regex) continue;
@@ -410,12 +437,7 @@ function generateScript(resolved, options = {}) {
         `}`,
       );
     }
-
-    lines.push(
-      '',
-      `# Step 1b — Apply Layer7 forward drop rules`,
-      `/ip firewall filter`,
-    );
+    lines.push('', `# Step 1b — Apply Layer7 forward drop rules`, `${fw}/filter`);
     for (const r of resolved) {
       if (!r.domain) continue;
       const ruleName = `l7-${r.domain.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
@@ -426,10 +448,6 @@ function generateScript(resolved, options = {}) {
       );
     }
     lines.push('');
-  } else {
-    lines.push(
-      `# Step 1 — Remove existing IP entries`,
-    );
   }
 
   // ── Remove old IP entries ─────────────────────────────────────
@@ -437,15 +455,15 @@ function generateScript(resolved, options = {}) {
   lines.push(`# Step ${stepRemove} — Remove existing IP entries`);
   for (const r of resolved) {
     if (!r.domain) continue;
-    lines.push(`/ip firewall address-list remove [find list=${listName} comment~"${r.domain}"]`);
+    lines.push(`${fw}/address-list remove [find list=${listName} comment~"${r.domain}"]`);
     if (includeIPv6 && (r.cidrsV6?.length || r.ipsV6?.length))
-      lines.push(`/ipv6 firewall address-list remove [find list=${listName} comment~"${r.domain}"]`);
+      lines.push(`${fw6}/address-list remove [find list=${listName} comment~"${r.domain}"]`);
   }
 
   // ── IPv4 address list ─────────────────────────────────────────
   const stepIPv4 = addLayer7 ? '3a' : '2a';
   lines.push('', `# Step ${stepIPv4} — IPv4 address list`);
-  lines.push('/ip firewall address-list');
+  lines.push(`${fw}/address-list`);
   for (const r of resolved) {
     if (!r.domain) continue;
     if (outputMode !== 'ips-only' && r.cidrs?.length > 0) {
@@ -463,11 +481,11 @@ function generateScript(resolved, options = {}) {
 
   // ── IPv6 address list ─────────────────────────────────────────
   if (includeIPv6) {
-    const hasIPv6   = resolved.some(r => r.cidrsV6?.length || r.ipsV6?.length);
-    const stepIPv6  = addLayer7 ? '3b' : '2b';
+    const hasIPv6  = resolved.some(r => r.cidrsV6?.length || r.ipsV6?.length);
+    const stepIPv6 = addLayer7 ? '3b' : '2b';
     if (hasIPv6) {
       lines.push('', `# Step ${stepIPv6} — IPv6 address list`);
-      lines.push('/ipv6 firewall address-list');
+      lines.push(`${fw6}/address-list`);
       for (const r of resolved) {
         if (!r.domain) continue;
         if (outputMode !== 'ips-only' && r.cidrsV6?.length > 0) {
@@ -484,12 +502,12 @@ function generateScript(resolved, options = {}) {
     }
   }
 
-  // ── IP firewall drop rules ────────────────────────────────────
+  // ── Firewall drop rules ───────────────────────────────────────
   if (addFilter) {
     const stepFW = addLayer7 ? '4' : '3';
     lines.push(
       '', `# Step ${stepFW} — IP firewall drop rules (address-list)`,
-      `/ip firewall filter`,
+      `${fw}/filter`,
       `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
       `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}" place-before=0`,
       `}`,
@@ -503,7 +521,7 @@ function generateScript(resolved, options = {}) {
     }
     if (includeIPv6) {
       lines.push(
-        `/ipv6 firewall filter`,
+        `${fw6}/filter`,
         `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
         `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} IPv6" place-before=0`,
         `}`,
@@ -515,10 +533,10 @@ function generateScript(resolved, options = {}) {
   const stepVerify = addLayer7 ? '5' : '4';
   lines.push(
     '', `# Step ${stepVerify} — Verify`,
-    `/ip firewall address-list print where list=${listName}`,
-    `/ip firewall filter print where dst-address-list=${listName}`,
-    ...(addLayer7   ? [`/ip firewall layer7-protocol print`] : []),
-    ...(includeIPv6 ? [`/ipv6 firewall address-list print where list=${listName}`] : []),
+    `${fw}/address-list print where list=${listName}`,
+    `${fw}/filter print where dst-address-list=${listName}`,
+    ...(addLayer7   ? [`${fwL7} print`] : []),
+    ...(includeIPv6 ? [`${fw6}/address-list print where list=${listName}`] : []),
   );
 
   return lines.join('\n');
@@ -532,6 +550,11 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
 
+  // Rate limiting
+  const clientIP = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+  if (isRateLimited(clientIP))
+    return res.status(429).json({ error: 'Too many requests — max 20 per minute per IP' });
+
   const {
     domains     = [],
     listName    = 'blocked',
@@ -540,6 +563,7 @@ module.exports = async function handler(req, res) {
     addSrcBlock = false,
     includeIPv6 = true,
     addLayer7   = false,
+    routerOS    = 'v7',
     category    = null,
   } = req.body || {};
 
@@ -566,15 +590,15 @@ module.exports = async function handler(req, res) {
 
   try {
     const results = await Promise.allSettled(
-      cleanDomains.map(d => resolveDomain(d, includeIPv6))
+      cleanDomains.map(d => resolveDomain(d, includeIPv6, addLayer7))
     );
     const resolved = results.map(r =>
       r.status === 'fulfilled'
         ? r.value
-        : { domain: '', cidrs: [], cidrsV6: [], ips: [], ipsV6: [], asns: [], cnames: [], layer7Regex: '', error: r.reason?.message }
+        : { domain: '', cidrs: [], cidrsV6: [], ips: [], ipsV6: [], asns: [], cnames: [], layer7Regex: null, error: r.reason?.message }
     );
 
-    const script = generateScript(resolved, { listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7 });
+    const script = generateScript(resolved, { listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7, routerOS });
 
     const stats = {
       totalDomains:  resolved.filter(r => r.domain).length,

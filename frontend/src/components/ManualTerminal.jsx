@@ -1,201 +1,222 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 
-function CopyBlock({ title, code, step, color = 'var(--primary)' }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      toast.success(`Step ${step} copied!`);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { toast.error('Copy failed'); }
+const STEP_STYLE = {
+  background: 'var(--surface2)',
+  border: '1px solid var(--border)',
+  borderRadius: '10px',
+  padding: '1rem',
+  marginBottom: '1rem',
+};
+
+const CODE_STYLE = {
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: '6px',
+  padding: '0.6rem 0.8rem',
+  fontFamily: 'var(--mono)',
+  fontSize: '0.78rem',
+  lineHeight: 1.7,
+  overflowX: 'auto',
+  whiteSpace: 'pre',
+  color: 'var(--text)',
+  marginTop: '0.5rem',
+};
+
+function CopyBlock({ lines, label }) {
+  const text = Array.isArray(lines) ? lines.join('\n') : lines;
+  const copy = () => {
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success(`${label} copied!`))
+      .catch(() => toast.error('Copy failed'));
   };
   return (
-    <div style={{
-      background: 'var(--surface2)',
-      border: `1px solid ${color}33`,
-      borderLeft: `4px solid ${color}`,
-      borderRadius: '10px',
-      marginBottom: '1.25rem',
-      overflow: 'hidden',
-    }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '0.6rem 1rem', background: `${color}11`,
-        borderBottom: `1px solid ${color}22`,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{
-            background: color, color: '#fff', borderRadius: '50%',
-            width: '22px', height: '22px', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0,
-          }}>{step}</span>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)' }}>{title}</span>
-        </div>
-        <button onClick={handleCopy} style={{
-          background: copied ? 'var(--success)' : color,
-          color: '#fff', border: 'none', borderRadius: '6px',
-          padding: '0.3rem 0.8rem', fontSize: '0.78rem', fontWeight: 600,
-          cursor: 'pointer', transition: 'background 0.2s', whiteSpace: 'nowrap',
-        }}>{copied ? '✅ Copied!' : '📋 Copy'}</button>
-      </div>
-      <pre style={{
-        margin: 0, padding: '0.85rem 1rem',
-        fontFamily: 'var(--mono)', fontSize: '0.78rem', lineHeight: 1.8,
-        color: 'var(--text)', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-      }}>{code}</pre>
+    <div style={{ position: 'relative', marginTop: '0.5rem' }}>
+      <button
+        onClick={copy}
+        style={{
+          position: 'absolute', top: '0.4rem', right: '0.4rem',
+          background: 'var(--primary)', color: '#fff',
+          border: 'none', borderRadius: '5px',
+          padding: '0.2rem 0.6rem', fontSize: '0.7rem', cursor: 'pointer', zIndex: 1,
+        }}
+      >
+        📋 Copy
+      </button>
+      <pre style={CODE_STYLE}>{text}</pre>
     </div>
   );
 }
 
-function buildSteps(resolved, listName, includeIPv6) {
-  if (!resolved?.length) return [];
-
-  // Step 1: Remove
-  const removeLines = resolved.flatMap(r => {
-    const lines = [`/ip firewall address-list remove [find list=${listName} comment~"${r.domain}"]`];
-    if (includeIPv6 && (r.cidrsV6?.length || r.ipsV6?.length))
-      lines.push(`/ipv6 firewall address-list remove [find list=${listName} comment~"${r.domain}"]`);
-    return lines;
-  }).join('\n');
-
-  // Step 2a: IPv4
-  const addIPv4 = resolved.flatMap(r => {
-    const lines = [];
-    if (!r.domain) return lines;
-    if (r.cidrs?.length) {
-      lines.push(`# ${r.domain} — CIDR ranges`);
-      r.cidrs.forEach(({ cidr }) => lines.push(`/ip firewall address-list add list=${listName} address=${cidr} comment="${r.domain}-range"`));
-    }
-    if (r.ips?.length) {
-      lines.push(`# ${r.domain} — IPv4`);
-      r.ips.forEach(ip => lines.push(`/ip firewall address-list add list=${listName} address=${ip} comment="${r.domain}-ip"`));
-    }
-    return lines;
-  }).join('\n');
-
-  // Step 2b: IPv6
-  const addIPv6Lines = resolved.flatMap(r => {
-    const lines = [];
-    if (!r.domain) return lines;
-    if (r.cidrsV6?.length) {
-      lines.push(`# ${r.domain} — IPv6 CIDR`);
-      r.cidrsV6.forEach(({ cidr }) => lines.push(`/ipv6 firewall address-list add list=${listName} address=${cidr} comment="${r.domain}-range6"`));
-    }
-    if (r.ipsV6?.length) {
-      lines.push(`# ${r.domain} — IPv6`);
-      r.ipsV6.forEach(ip => lines.push(`/ipv6 firewall address-list add list=${listName} address=${ip} comment="${r.domain}-ip6"`));
-    }
-    return lines;
-  }).join('\n');
-
-  // Step 3: Rules
-  const firewallCmd = [
-    `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
-    `  /ip firewall filter add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}" place-before=0`,
-    `}`,
-    ...(includeIPv6 && addIPv6Lines ? [
-      `:if ([:len [/ipv6 firewall filter find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
-      `  /ipv6 firewall filter add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} v6" place-before=0`,
-      `}`,
-    ] : []),
-  ].join('\n');
-
-  // Step 4: Verify
-  const verifyLines = [
-    `/ip firewall address-list print where list=${listName}`,
-    `/ip firewall filter print where dst-address-list=${listName}`,
-    ...(includeIPv6 && addIPv6Lines ? [`/ipv6 firewall address-list print where list=${listName}`] : []),
-  ].join('\n');
-
-  const steps = [
-    { step: 1, title: 'Remove old entries (clean update)', code: removeLines, color: 'var(--warning)', hint: 'Safe to skip on first run.' },
-    { step: 2, title: 'Add IPv4 addresses to list', code: addIPv4, color: 'var(--primary)', hint: 'Paste in Winbox → New Terminal, SSH, or WebFig.' },
-  ];
-
-  if (includeIPv6 && addIPv6Lines) {
-    steps.push({ step: '2b', title: 'Add IPv6 addresses to list', code: addIPv6Lines, color: '#9b59b6', hint: 'Required for RouterOS 7.x with IPv6 enabled.' });
-  }
-
-  steps.push(
-    { step: 3, title: 'Add firewall drop rule (run once)', code: firewallCmd, color: 'var(--danger)', hint: 'Skip if rule already exists. Idempotent check included.' },
-    { step: 4, title: 'Verify — confirm everything applied', code: verifyLines, color: 'var(--success)', hint: 'Should list all your IPs and the drop rule.' },
-  );
-
-  return steps;
-}
-
-export default function ManualTerminal({ resolved, listName = 'blocked', includeIPv6 = true }) {
-  const [copyAll, setCopyAll] = useState(false);
-
-  if (!resolved?.length) {
+export default function ManualTerminal({ resolved, listName = 'blocked', includeIPv6 = true, addLayer7 = false }) {
+  if (!resolved || resolved.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
         <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🖥️</div>
-        <p>Resolve domains first to get terminal commands</p>
+        <p>Resolve domains first to see terminal commands</p>
       </div>
     );
   }
 
-  const steps = buildSteps(resolved, listName, includeIPv6);
-  const allCode = steps.map(s => `# ── Step ${s.step}: ${s.title} ──\n${s.code}`).join('\n\n');
+  const validResolved = resolved.filter(r => r.domain);
 
-  const totalIPs   = resolved.reduce((a, r) => a + (r.ips?.length || 0), 0);
-  const totalCIDRs = resolved.reduce((a, r) => a + (r.cidrs?.length || 0), 0);
-  const totalIPv6  = resolved.reduce((a, r) => a + (r.ipsV6?.length || 0) + (r.cidrsV6?.length || 0), 0);
+  // ── Step: Layer7 Protocol (optional) ─────────────────────────
+  const layer7AddLines = [];
+  const layer7FilterLines = [];
+  if (addLayer7) {
+    layer7AddLines.push('/ip firewall layer7-protocol');
+    for (const r of validResolved) {
+      if (!r.layer7Regex) continue;
+      const ruleName = `l7-${r.domain.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      layer7AddLines.push(
+        `:if ([:len [find name=${ruleName}]] = 0) do={`,
+        `  add name=${ruleName} regexp="${r.layer7Regex}"`,
+        `}`,
+      );
+      layer7FilterLines.push(
+        `/ip firewall filter`,
+        `:if ([:len [find chain=forward layer7-protocol=${ruleName} action=drop]] = 0) do={`,
+        `  add chain=forward layer7-protocol=${ruleName} action=drop comment="L7-block ${r.domain}" place-before=0`,
+        `}`,
+      );
+    }
+  }
+
+  // ── Step: Remove existing entries ────────────────────────────
+  const removeLines = validResolved.flatMap(r => [
+    `/ip firewall address-list remove [find list=${listName} comment~"${r.domain}"]`,
+    ...(includeIPv6 && (r.cidrsV6?.length || r.ipsV6?.length)
+      ? [`/ipv6 firewall address-list remove [find list=${listName} comment~"${r.domain}"]`]
+      : []),
+  ]);
+
+  // ── Step: IPv4 address-list ───────────────────────────────────
+  const ipv4Lines = ['/ip firewall address-list'];
+  for (const r of validResolved) {
+    if (r.cidrs?.length > 0) {
+      ipv4Lines.push(`# ${r.domain} — CIDR ranges`);
+      r.cidrs.forEach(({ cidr }) =>
+        ipv4Lines.push(`add list=${listName} address=${cidr} comment="${r.domain}-range"`)
+      );
+    }
+    if (r.ips?.length > 0) {
+      ipv4Lines.push(`# ${r.domain} — IPv4`);
+      r.ips.forEach(ip =>
+        ipv4Lines.push(`add list=${listName} address=${ip} comment="${r.domain}-ip"`)
+      );
+    }
+  }
+
+  // ── Step: IPv6 address-list ───────────────────────────────────
+  const ipv6Lines = [];
+  if (includeIPv6) {
+    const hasV6 = validResolved.some(r => r.cidrsV6?.length || r.ipsV6?.length);
+    if (hasV6) {
+      ipv6Lines.push('/ipv6 firewall address-list');
+      for (const r of validResolved) {
+        if (r.cidrsV6?.length > 0) {
+          ipv6Lines.push(`# ${r.domain} — IPv6 CIDR`);
+          r.cidrsV6.forEach(({ cidr }) =>
+            ipv6Lines.push(`add list=${listName} address=${cidr} comment="${r.domain}-range6"`)
+          );
+        }
+        if (r.ipsV6?.length > 0) {
+          ipv6Lines.push(`# ${r.domain} — IPv6`);
+          r.ipsV6.forEach(ip =>
+            ipv6Lines.push(`add list=${listName} address=${ip} comment="${r.domain}-ip6"`)
+          );
+        }
+      }
+    }
+  }
+
+  // ── Step: Firewall filter ─────────────────────────────────────
+  const filterLines = [
+    `/ip firewall filter`,
+    `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
+    `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}" place-before=0`,
+    `}`,
+    ...(includeIPv6 ? [
+      `/ipv6 firewall filter`,
+      `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
+      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} IPv6" place-before=0`,
+      `}`,
+    ] : []),
+  ];
+
+  // ── Step: Verify ──────────────────────────────────────────────
+  const verifyLines = [
+    `/ip firewall address-list print where list=${listName}`,
+    `/ip firewall filter print where dst-address-list=${listName}`,
+    ...(addLayer7 ? [`/ip firewall layer7-protocol print`] : []),
+    ...(includeIPv6 ? [`/ipv6 firewall address-list print where list=${listName}`] : []),
+  ];
+
+  let stepNum = 1;
 
   return (
-    <div>
-      <div style={{
-        background: 'var(--surface2)', border: '1px solid var(--border)',
-        borderRadius: '10px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem',
-      }}>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <span>🌐 <strong style={{ color: 'var(--text)' }}>{resolved.length}</strong> domains</span>
-          <span>📊 <strong style={{ color: 'var(--primary)' }}>{totalCIDRs}</strong> CIDRs</span>
-          <span>🔵 <strong style={{ color: 'var(--success)' }}>{totalIPs}</strong> IPs</span>
-          {includeIPv6 && <span>🟣 <strong style={{ color: '#9b59b6' }}>{totalIPv6}</strong> IPv6</span>}
-          <span>list: <code style={{ color: 'var(--warning)' }}>{listName}</code></span>
-        </div>
-        <button onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(allCode);
-            setCopyAll(true);
-            toast.success('All steps copied!');
-            setTimeout(() => setCopyAll(false), 2000);
-          } catch { toast.error('Copy failed'); }
-        }} style={{
-          background: copyAll ? 'var(--success)' : 'var(--surface)',
-          color: copyAll ? '#fff' : 'var(--text)',
-          border: '1px solid var(--border)', borderRadius: '7px',
-          padding: '0.35rem 0.9rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-        }}>{copyAll ? '✅ All Copied!' : '📋 Copy All Steps'}</button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
 
-      <div style={{
-        background: 'rgba(91,141,239,0.07)', border: '1px solid rgba(91,141,239,0.25)',
-        borderRadius: '10px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem',
-        fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.7,
-      }}>
-        <strong style={{ color: 'var(--primary)' }}>📡 How to apply on your MikroTik:</strong>
-        <ol style={{ margin: '0.5rem 0 0 1.2rem', padding: 0 }}>
-          <li><strong>Winbox</strong> → New Terminal → paste commands</li>
-          <li><strong>SSH</strong> → <code>ssh admin@192.168.88.1</code> → paste</li>
-          <li><strong>WebFig</strong> → Terminal → paste commands</li>
-          <li>Run steps <strong>in order: 1 → 2 → 3 → 4</strong></li>
-        </ol>
-      </div>
-
-      {steps.map(s => (
-        <div key={s.step}>
-          <CopyBlock {...s} />
-          <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '-1rem', marginBottom: '1.25rem', paddingLeft: '0.5rem' }}>
-            💡 {s.hint}
+      {/* Layer7 Step */}
+      {addLayer7 && layer7AddLines.length > 1 && (
+        <div style={{ ...STEP_STYLE, borderColor: '#e05252' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <h4 style={{ color: '#e05252', fontSize: '0.82rem', margin: 0 }}>Step {stepNum++} — Layer7 Protocol Patterns</h4>
+            <span style={{
+              fontSize: '0.68rem', background: 'rgba(224,82,82,0.12)',
+              color: '#e05252', padding: '0.1rem 0.5rem', borderRadius: '4px',
+            }}>HTTP Host + TLS SNI</span>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+            Blocks domain by name — works even when IPs rotate. Runs before IP-based rules.
           </p>
+          <CopyBlock lines={layer7AddLines} label="Layer7 patterns" />
+          {layer7FilterLines.length > 0 && (
+            <CopyBlock lines={layer7FilterLines} label="Layer7 filter rules" />
+          )}
         </div>
-      ))}
+      )}
+
+      {/* Remove */}
+      <div style={STEP_STYLE}>
+        <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '0.4rem' }}>Step {stepNum++} — Remove existing entries</h4>
+        <CopyBlock lines={removeLines} label="Remove" />
+      </div>
+
+      {/* IPv4 */}
+      <div style={STEP_STYLE}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>Step {stepNum++} — IPv4 address list</h4>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {validResolved.reduce((a, r) => a + (r.cidrs?.length || 0), 0)} CIDR + 
+            {validResolved.reduce((a, r) => a + (r.ips?.length   || 0), 0)} IPs
+          </span>
+        </div>
+        <CopyBlock lines={ipv4Lines} label="IPv4 list" />
+      </div>
+
+      {/* IPv6 */}
+      {ipv6Lines.length > 0 && (
+        <div style={STEP_STYLE}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>Step {stepNum++} — IPv6 address list</h4>
+            <span style={{ fontSize: '0.72rem', color: '#9b59b6' }}>IPv6</span>
+          </div>
+          <CopyBlock lines={ipv6Lines} label="IPv6 list" />
+        </div>
+      )}
+
+      {/* Firewall rules */}
+      <div style={STEP_STYLE}>
+        <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '0.4rem' }}>Step {stepNum++} — Firewall drop rules</h4>
+        <CopyBlock lines={filterLines} label="Firewall rules" />
+      </div>
+
+      {/* Verify */}
+      <div style={STEP_STYLE}>
+        <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '0.4rem' }}>Step {stepNum++} — Verify</h4>
+        <CopyBlock lines={verifyLines} label="Verify" />
+      </div>
     </div>
   );
 }

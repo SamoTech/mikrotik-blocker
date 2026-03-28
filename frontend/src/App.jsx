@@ -14,18 +14,19 @@ export default function App() {
   const [addFilter, setAddFilter]     = useState(true);
   const [addSrcBlock, setAddSrcBlock] = useState(false);
   const [includeIPv6, setIncludeIPv6] = useState(true);
+  const [addLayer7, setAddLayer7]     = useState(false);
   const [activeTab, setActiveTab]     = useState('terminal');
   const [activeCategory, setActiveCategory] = useState(null);
 
   const { resolved, script, stats, loading, error, resolve } = useResolver();
 
   const handleResolve = useCallback((domains, category = null) => {
-    resolve(domains, { listName, outputMode, addFilter, addSrcBlock, includeIPv6, category });
-  }, [resolve, listName, outputMode, addFilter, addSrcBlock, includeIPv6]);
+    resolve(domains, { listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7, category });
+  }, [resolve, listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7]);
 
   const handleCategory = (cat) => {
     setActiveCategory(cat);
-    resolve([], { listName, outputMode, addFilter, addSrcBlock, includeIPv6, category: cat });
+    resolve([], { listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7, category: cat });
   };
 
   const CATEGORIES = [
@@ -60,6 +61,7 @@ export default function App() {
             <span className="badge badge-green">DNS Auto-Resolve</span>
             <span className="badge badge-purple">ASN CIDR</span>
             <span className="badge badge-orange">IPv6</span>
+            <span className="badge badge-red">Layer7</span>
           </div>
         </div>
       </header>
@@ -151,6 +153,36 @@ export default function App() {
                 Include IPv6 (AAAA + /ipv6)
               </label>
             </div>
+
+            {/* Layer7 toggle — highlighted */}
+            <div className="option-row" style={{
+              marginTop: '0.5rem',
+              padding: '0.6rem 0.75rem',
+              borderRadius: '8px',
+              background: addLayer7 ? 'rgba(224,82,82,0.08)' : 'transparent',
+              border: `1px solid ${addLayer7 ? '#e05252' : 'var(--border)'}`,
+              transition: 'all 0.2s',
+            }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={addLayer7}
+                  onChange={e => setAddLayer7(e.target.checked)}
+                  style={{ marginTop: '2px' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 600, color: addLayer7 ? '#e05252' : 'var(--text)', fontSize: '0.85rem' }}>
+                    🔍 Layer7 Protocol Block
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.4 }}>
+                    Matches HTTP Host header + TLS SNI — blocks domain by name regardless of IP changes.
+                    Uses <code>/ip firewall layer7-protocol</code>.
+                    <br />
+                    <span style={{ color: '#f0a500' }}>⚠️ High CPU on large traffic — use on edge/border router only.</span>
+                  </div>
+                </div>
+              </label>
+            </div>
           </div>
 
           <SchedulerPanel onResolve={handleResolve} />
@@ -188,7 +220,8 @@ export default function App() {
                           {r.cidrs?.length   > 0 && `📊 ${r.cidrs.length} CIDR  `}
                           {r.cidrsV6?.length > 0 && `🟣 ${r.cidrsV6.length} CIDRv6  `}
                           {r.ips?.length     > 0 && `🔵 ${r.ips.length} IPv4  `}
-                          {r.ipsV6?.length   > 0 && `🟢 ${r.ipsV6.length} IPv6`}
+                          {r.ipsV6?.length   > 0 && `🟢 ${r.ipsV6.length} IPv6  `}
+                          {r.layer7Regex         && `🔍 L7`}
                         </span>
                       )
                     }
@@ -198,7 +231,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Tabs: Terminal + Script only */}
+          {/* Tabs */}
           <div className="tab-bar">
             <button
               className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
@@ -215,7 +248,7 @@ export default function App() {
           </div>
 
           {activeTab === 'terminal' && (
-            <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} />
+            <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} addLayer7={addLayer7} />
           )}
           {activeTab === 'script' && (
             <ScriptOutput script={script} loading={loading} />

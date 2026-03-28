@@ -4,6 +4,18 @@ import toast from 'react-hot-toast';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
+function extractMsg(err) {
+  // Never pass an object to toast/setState — always stringify
+  const data = err?.response?.data;
+  if (data) {
+    if (typeof data.error   === 'string') return data.error;
+    if (typeof data.message === 'string') return data.message;
+    if (typeof data.detail  === 'string') return data.detail;
+    return JSON.stringify(data).slice(0, 120);
+  }
+  return typeof err?.message === 'string' ? err.message : String(err);
+}
+
 export default function useResolver() {
   const [resolved, setResolved] = useState([]);
   const [script,   setScript]   = useState('');
@@ -26,11 +38,18 @@ export default function useResolver() {
         routerOS:    options.routerOS    || 'v7',
         category:    options.category    || null,
       });
-      setResolved(data.resolved);
-      setScript(data.script);
-      setStats(data.stats);
 
-      const { totalDomains, totalCIDRs, totalIPs, totalIPsV6, failed } = data.stats;
+      setResolved(Array.isArray(data.resolved) ? data.resolved : []);
+      setScript(typeof data.script === 'string' ? data.script : '');
+      setStats(data.stats && typeof data.stats === 'object' ? data.stats : null);
+
+      const s = data.stats || {};
+      const failed       = Number(s.failed       ?? 0);
+      const totalDomains = Number(s.totalDomains ?? 0);
+      const totalCIDRs   = Number(s.totalCIDRs   ?? 0);
+      const totalIPs     = Number(s.totalIPs     ?? 0);
+      const totalIPsV6   = Number(s.totalIPsV6   ?? 0);
+
       if (failed > 0) {
         toast.error(`⚠️ ${failed} domain(s) failed to resolve`);
       } else {
@@ -40,7 +59,7 @@ export default function useResolver() {
         );
       }
     } catch (err) {
-      const msg = err.response?.data?.error || err.message;
+      const msg = extractMsg(err);
       setError(msg);
       toast.error(msg);
     } finally {

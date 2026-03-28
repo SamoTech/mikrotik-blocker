@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import ScriptDiff from './ScriptDiff';
 
+function safeStr(val) {
+  if (typeof val === 'string') return val;
+  if (val == null) return '';
+  return JSON.stringify(val);
+}
+
 export default function ScriptOutput({ script, loading }) {
   const [previousScript, setPreviousScript] = useState(null);
   const [validating, setValidating]         = useState(false);
@@ -9,7 +15,6 @@ export default function ScriptOutput({ script, loading }) {
   const [showDiff, setShowDiff]             = useState(false);
   const prevRef = useRef(null);
 
-  // Save previous script when new one arrives
   useEffect(() => {
     if (script && prevRef.current && prevRef.current !== script) {
       setPreviousScript(prevRef.current);
@@ -55,9 +60,8 @@ export default function ScriptOutput({ script, loading }) {
 
   return (
     <div>
-      {/* Action buttons */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-sm" onClick={handleCopy}     disabled={!script}>📋 Copy</button>
+        <button className="btn btn-primary btn-sm"   onClick={handleCopy}     disabled={!script}>📋 Copy</button>
         <button className="btn btn-secondary btn-sm" onClick={handleDownload} disabled={!script}>⬇️ Download .rsc</button>
         <button
           className="btn btn-secondary btn-sm"
@@ -68,19 +72,14 @@ export default function ScriptOutput({ script, loading }) {
           {validating ? '⏳ Validating...' : '🔎 Validate Script'}
         </button>
         {previousScript && (
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowDiff(d => !d)}
-          >
+          <button className="btn btn-secondary btn-sm" onClick={() => setShowDiff(d => !d)}>
             {showDiff ? '▲ Hide Diff' : '▼ Show Diff'}
           </button>
         )}
       </div>
 
-      {/* Diff */}
       {showDiff && previousScript && <ScriptDiff previous={previousScript} current={script} />}
 
-      {/* Validation results */}
       {validation && (
         <div style={{
           background: validation.valid ? 'rgba(76,175,125,0.08)' : 'rgba(224,82,82,0.08)',
@@ -91,28 +90,32 @@ export default function ScriptOutput({ script, loading }) {
           <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: validation.valid ? 'var(--success)' : 'var(--danger)' }}>
             {validation.valid ? '✅ Script looks good' : '❌ Issues found'}
           </div>
-          {validation.errors?.map((e, i) => (
-            <div key={i} style={{ color: 'var(--danger)', marginBottom: '0.2rem' }}>❌ <strong>{e.code}</strong>: {e.message}</div>
+          {(validation.errors || []).map((e, i) => (
+            <div key={i} style={{ color: 'var(--danger)', marginBottom: '0.2rem' }}>
+              ❌ <strong>{safeStr(e.code)}</strong>: {safeStr(e.message)}
+            </div>
           ))}
-          {validation.warnings?.map((w, i) => (
-            <div key={i} style={{ color: 'var(--warning)', marginBottom: '0.2rem' }}>⚠️ <strong>{w.code}</strong>: {w.message}</div>
+          {(validation.warnings || []).map((w, i) => (
+            <div key={i} style={{ color: 'var(--warning)', marginBottom: '0.2rem' }}>
+              ⚠️ <strong>{safeStr(w.code)}</strong>: {safeStr(w.message)}
+            </div>
           ))}
-          {validation.info?.map((inf, i) => (
-            <div key={i} style={{ color: 'var(--text-muted)' }}>ℹ️ {inf.message}</div>
+          {(validation.info || []).map((inf, i) => (
+            <div key={i} style={{ color: 'var(--text-muted)' }}>
+              ℹ️ {safeStr(inf.message)}
+            </div>
           ))}
         </div>
       )}
 
-      {/* Script textarea */}
       {loading && (
         <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '12px', padding: '3rem', textAlign: 'center',
           color: 'var(--text-muted)',
-        }}>
-          ⏳ Resolving domains...
-        </div>
+        }}>⏳ Resolving domains...</div>
       )}
+
       {!loading && script && (
         <pre style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
@@ -121,18 +124,15 @@ export default function ScriptOutput({ script, loading }) {
           color: 'var(--text)', overflowX: 'auto',
           whiteSpace: 'pre', maxHeight: '65vh', overflowY: 'auto',
           lineHeight: 1.6,
-        }}>
-          {script}
-        </pre>
+        }}>{script}</pre>
       )}
+
       {!loading && !script && (
         <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '12px', padding: '3rem', textAlign: 'center',
           color: 'var(--text-muted)', fontSize: '0.9rem',
-        }}>
-          📝 Resolve domains to generate RouterOS script
-        </div>
+        }}>📝 Resolve domains to generate RouterOS script</div>
       )}
     </div>
   );

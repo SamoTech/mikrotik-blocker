@@ -33,6 +33,7 @@
 .badge-green  { border-color: var(--success); color: var(--success); }
 .badge-purple { border-color: #9b59b6; color: #9b59b6; }
 .badge-orange { border-color: var(--warning); color: var(--warning); }
+.badge-red    { border-color: var(--danger); color: var(--danger); }
 
 /* Layout */
 .app-main {

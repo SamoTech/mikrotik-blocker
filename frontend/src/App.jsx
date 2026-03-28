@@ -5,25 +5,47 @@ import ScriptOutput from './components/ScriptOutput';
 import ManualTerminal from './components/ManualTerminal';
 import SchedulerPanel from './components/SchedulerPanel';
 import MikroTikPush from './components/MikroTikPush';
+import StatsBar from './components/StatsBar';
 import useResolver from './hooks/useResolver';
 import './App.css';
 
 export default function App() {
-  const [listName, setListName] = useState('blocked_sites');
-  const [addFirewallRule, setAddFirewallRule] = useState(true);
-  const { resolved, script, loading, error, resolve } = useResolver();
-  const [activeTab, setActiveTab] = useState('terminal');
+  const [listName, setListName]       = useState('blocked');
+  const [outputMode, setOutputMode]   = useState('both');
+  const [addFilter, setAddFilter]     = useState(true);
+  const [addSrcBlock, setAddSrcBlock] = useState(false);
+  const [includeIPv6, setIncludeIPv6] = useState(true);
+  const [activeTab, setActiveTab]     = useState('terminal');
+  const [activeCategory, setActiveCategory] = useState(null);
 
-  const handleResolve = useCallback((domains) => {
-    resolve(domains, { listName, addFirewallRule });
-  }, [resolve, listName, addFirewallRule]);
+  const { resolved, script, stats, loading, error, resolve } = useResolver();
+
+  const handleResolve = useCallback((domains, category = null) => {
+    resolve(domains, { listName, outputMode, addFilter, addSrcBlock, includeIPv6, category });
+  }, [resolve, listName, outputMode, addFilter, addSrcBlock, includeIPv6]);
+
+  const handleCategory = (cat) => {
+    setActiveCategory(cat);
+    resolve([], { listName, outputMode, addFilter, addSrcBlock, includeIPv6, category: cat });
+  };
+
+  const CATEGORIES = [
+    { id: 'ads',    label: '🚦 Ads & Tracking',  color: '#f0a500' },
+    { id: 'adult',  label: '🔞 Adult Content',    color: '#e05252' },
+    { id: 'malware',label: '☠️ Malware/Phishing', color: '#9b59b6' },
+  ];
+
+  const OUTPUT_MODES = [
+    { id: 'both',      label: '◑ Both',       hint: 'CIDR + IPs' },
+    { id: 'cidr-only', label: '📊 CIDR Only',  hint: 'ASN ranges' },
+    { id: 'ips-only',  label: '🔵 IPs Only',   hint: 'DNS resolved' },
+  ];
 
   return (
     <div className="app">
-      <Toaster
-        position="top-right"
-        toastOptions={{ style: { background: '#1a1d2e', color: '#e8eaf6', border: '1px solid #2e3150' } }}
-      />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: '#1a1d2e', color: '#e8eaf6', border: '1px solid #2e3150' }
+      }} />
 
       <header className="app-header">
         <div className="header-inner">
@@ -37,6 +59,8 @@ export default function App() {
           <div className="header-badges">
             <span className="badge">RouterOS CLI</span>
             <span className="badge badge-green">DNS Auto-Resolve</span>
+            <span className="badge badge-purple">ASN CIDR</span>
+            <span className="badge badge-orange">IPv6</span>
           </div>
         </div>
       </header>
@@ -46,26 +70,86 @@ export default function App() {
         <div className="left-panel">
           <DomainInput onResolve={handleResolve} loading={loading} />
 
+          {/* Category Blocklists */}
+          <div className="options-card">
+            <h3>📦 Category Blocklists</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+              Fetch domain lists from oisd.nl and resolve them all at once
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  className="btn btn-secondary"
+                  style={{
+                    borderColor: activeCategory === cat.id ? cat.color : undefined,
+                    color: activeCategory === cat.id ? cat.color : undefined,
+                    textAlign: 'left',
+                    opacity: loading ? 0.5 : 1,
+                  }}
+                  onClick={() => handleCategory(cat.id)}
+                  disabled={loading}
+                >
+                  {loading && activeCategory === cat.id ? '⏳ Fetching...' : cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Script Options */}
           <div className="options-card">
             <h3>⚙️ Script Options</h3>
+
             <div className="option-row">
               <label>Address List Name</label>
               <input
                 type="text"
                 value={listName}
                 onChange={e => setListName(e.target.value)}
-                placeholder="blocked_sites"
+                placeholder="blocked"
                 className="text-input"
               />
             </div>
+
             <div className="option-row">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={addFirewallRule}
-                  onChange={e => setAddFirewallRule(e.target.checked)}
-                />
-                &nbsp;Add firewall drop rule
+              <label>Output Mode</label>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {OUTPUT_MODES.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setOutputMode(m.id)}
+                    title={m.hint}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: '6px',
+                      border: `1px solid ${outputMode === m.id ? 'var(--primary)' : 'var(--border)'}`,
+                      background: outputMode === m.id ? 'var(--primary)' : 'var(--surface2)',
+                      color: outputMode === m.id ? '#fff' : 'var(--text-muted)',
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                      fontWeight: outputMode === m.id ? 600 : 400,
+                    }}
+                  >{m.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="option-row">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} />
+                Add firewall drop rule
+              </label>
+            </div>
+            <div className="option-row">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} />
+                Also block inbound (src)
+              </label>
+            </div>
+            <div className="option-row">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} />
+                Include IPv6 (AAAA + /ipv6)
               </label>
             </div>
           </div>
@@ -77,16 +161,37 @@ export default function App() {
         <div className="right-panel">
           {error && <div className="error-banner">⚠️ {error}</div>}
 
+          {stats && <StatsBar stats={stats} />}
+
           {resolved.length > 0 && (
             <div className="resolved-summary">
-              <h3>📌 Resolved IPs</h3>
+              <h3>📌 Resolved Results</h3>
               <div className="domain-chips">
                 {resolved.map(r => (
                   <div key={r.domain} className={`domain-chip ${r.error ? 'chip-error' : 'chip-ok'}`}>
-                    <strong>{r.domain}</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>{r.domain}</strong>
+                      {r.method && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          background: r.method === 'ASN+DNS' ? 'rgba(91,141,239,0.15)' : 'rgba(76,175,125,0.15)',
+                          color: r.method === 'ASN+DNS' ? 'var(--primary)' : 'var(--success)',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '4px',
+                          fontWeight: 600,
+                        }}>{r.method}</span>
+                      )}
+                    </div>
                     {r.error
                       ? <span className="chip-detail error">❌ {r.error}</span>
-                      : <span className="chip-detail">{r.ips.length} IP{r.ips.length !== 1 ? 's' : ''}: {r.ips.join(', ')}</span>
+                      : (
+                        <span className="chip-detail">
+                          {r.cidrs?.length > 0 && `📊 ${r.cidrs.length} CIDR  `}
+                          {r.cidrsV6?.length > 0 && `🟣 ${r.cidrsV6.length} CIDRv6  `}
+                          {r.ips?.length > 0 && `🔵 ${r.ips.length} IPv4  `}
+                          {r.ipsV6?.length > 0 && `🟣 ${r.ipsV6.length} IPv6`}
+                        </span>
+                      )
                     }
                   </div>
                 ))}
@@ -94,37 +199,21 @@ export default function App() {
             </div>
           )}
 
-          {/* TABS */}
           <div className="tab-bar">
-            <button
-              className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
-              onClick={() => setActiveTab('terminal')}
-            >
-              🖥️ Terminal Commands
+            <button className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`} onClick={() => setActiveTab('terminal')}>
+              🖥️ Terminal
             </button>
-            <button
-              className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`}
-              onClick={() => setActiveTab('script')}
-            >
-              📜 Full Script (.rsc)
+            <button className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`} onClick={() => setActiveTab('script')}>
+              📜 Script (.rsc)
             </button>
-            <button
-              className={`tab-btn ${activeTab === 'push' ? 'active' : ''}`}
-              onClick={() => setActiveTab('push')}
-            >
+            <button className={`tab-btn ${activeTab === 'push' ? 'active' : ''}`} onClick={() => setActiveTab('push')}>
               🚀 API Push
             </button>
           </div>
 
-          {activeTab === 'terminal' && (
-            <ManualTerminal resolved={resolved} listName={listName} />
-          )}
-          {activeTab === 'script' && (
-            <ScriptOutput script={script} loading={loading} />
-          )}
-          {activeTab === 'push' && (
-            <MikroTikPush script={script} />
-          )}
+          {activeTab === 'terminal' && <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} />}
+          {activeTab === 'script'   && <ScriptOutput script={script} loading={loading} />}
+          {activeTab === 'push'     && <MikroTikPush script={script} />}
         </div>
       </main>
     </div>

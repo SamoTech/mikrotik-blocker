@@ -21,7 +21,7 @@
 .logo-icon { font-size: 2.5rem; }
 .logo h1 { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
 .logo p { font-size: 0.8rem; color: var(--text-muted); }
-.header-badges { display: flex; gap: 0.5rem; }
+.header-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .badge {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
@@ -30,7 +30,9 @@
   border: 1px solid var(--border);
   color: var(--text-muted);
 }
-.badge-green { border-color: var(--success); color: var(--success); }
+.badge-green  { border-color: var(--success); color: var(--success); }
+.badge-purple { border-color: #9b59b6; color: #9b59b6; }
+.badge-orange { border-color: var(--warning); color: var(--warning); }
 
 /* Layout */
 .app-main {
@@ -63,7 +65,7 @@
 }
 .options-card h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem; }
 .option-row { margin-bottom: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; }
-.option-row label { font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; }
+.option-row label { font-size: 0.85rem; color: var(--text-muted); }
 .text-input {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -86,13 +88,13 @@
   cursor: pointer;
   transition: background 0.2s, opacity 0.2s;
 }
-.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary   { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
 .btn-success { background: var(--success); color: #fff; }
-.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger  { background: var(--danger); color: #fff; }
 .btn-sm { padding: 0.35rem 0.85rem; font-size: 0.8rem; }
 
 /* Resolved summary */
@@ -115,7 +117,7 @@
   flex-direction: column;
   gap: 0.2rem;
 }
-.chip-ok { border-left: 3px solid var(--success); }
+.chip-ok    { border-left: 3px solid var(--success); }
 .chip-error { border-left: 3px solid var(--danger); }
 .chip-detail { color: var(--text-muted); font-family: var(--mono); font-size: 0.75rem; word-break: break-all; }
 .chip-detail.error { color: var(--danger); }

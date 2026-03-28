@@ -36,8 +36,6 @@ const TIERS = [
 
 const LINKS = [
   { label: 'GitHub Sponsors', href: 'https://github.com/sponsors/SamoTech', icon: '💖', color: '#e05252' },
-  { label: 'Buy Me a Coffee',  href: 'https://buymeacoffee.com/samotech',     icon: '☕', color: '#f0a500' },
-  { label: 'Ko-fi',            href: 'https://ko-fi.com/samotech',            icon: '🎁', color: '#5b8def' },
 ];
 
 export default function SponsorsPage() {

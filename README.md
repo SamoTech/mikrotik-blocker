@@ -207,17 +207,17 @@ mikrotik-blocker/
 {
   "resolved": [
     {
-      "domain":      "facebook.com",
-      "method":      "ASN+DNS",
-      "asns":        ["32934", "63293"],
-      "cnames":      ["star-mini.c10r.facebook.com"],
-      "cidrs":       [{ "cidr": "157.240.0.0/16", "description": "FACEBOOK" }],
-      "cidrsV6":     [{ "cidr": "2a03:2880::/32",  "description": "FACEBOOK" }],
-      "ips":         ["157.240.241.35", "157.240.20.35"],
-      "ipsV6":       ["2a03:2880:f003:c07:face:b00c::167"],
-      "layer7Regex": "^.*(Host: [^\r]*facebook\.com|...)",
+      "domain":         "facebook.com",
+      "method":         "ASN+DNS",
+      "asns":           ["32934", "63293"],
+      "cnames":         ["star-mini.c10r.facebook.com"],
+      "cidrs":          [{ "cidr": "157.240.0.0/16", "description": "FACEBOOK" }],
+      "cidrsV6":        [{ "cidr": "2a03:2880::/32",  "description": "FACEBOOK" }],
+      "ips":            ["157.240.241.35", "157.240.20.35"],
+      "ipsV6":          ["2a03:2880:f003:c07:face:b00c::167"],
+      "layer7Regex":    "^.*(Host: [^\r]*facebook\.com|...)",
       "totalAddresses": 12,
-      "error": null
+      "error":          null
     }
   ],
   "script": "# MikroTik Blocker script...",
@@ -239,18 +239,16 @@ mikrotik-blocker/
 
 ## 📜 Example Script Output
 
-### With Layer7 enabled (`addLayer7: true`)
-
 ```rsc
 # ================================================
 # MikroTik Blocker — Auto-Generated Script
 # Date    : 2026-03-28T17:00:00.000Z
-# Domains : facebook.com, tiktok.com
+# Domains : facebook.com
 # List    : blocked
 # Mode    : both + IPv6 + Layer7
 # ================================================
 
-# Step 1 — Layer7 protocol patterns (HTTP Host + TLS SNI)
+# Step 1 — Layer7 protocol patterns
 /ip firewall layer7-protocol
 :if ([:len [find name=l7-facebook_com]] = 0) do={
   add name=l7-facebook_com regexp="^.*(Host: [^\r]*facebook\.com|...)"
@@ -262,19 +260,19 @@ mikrotik-blocker/
   add chain=forward layer7-protocol=l7-facebook_com action=drop comment="L7-block facebook.com" place-before=0
 }
 
-# Step 2 — Remove existing IP entries
+# Step 2 — Remove existing entries
 /ip firewall address-list remove [find list=blocked comment~"facebook.com"]
 
-# Step 3a — IPv4 address list
+# Step 3a — IPv4
 /ip firewall address-list
-add list=blocked address=157.240.0.0/16  comment="facebook.com-range"
-add list=blocked address=157.240.241.35  comment="facebook.com-ip"
+add list=blocked address=157.240.0.0/16 comment="facebook.com-range"
+add list=blocked address=157.240.241.35 comment="facebook.com-ip"
 
-# Step 3b — IPv6 address list
+# Step 3b — IPv6
 /ipv6 firewall address-list
-add list=blocked address=2a03:2880::/32   comment="facebook.com-range6"
+add list=blocked address=2a03:2880::/32 comment="facebook.com-range6"
 
-# Step 4 — IP firewall drop rules
+# Step 4 — Drop rules
 /ip firewall filter
 :if ([:len [find chain=forward dst-address-list=blocked action=drop]] = 0) do={
   add chain=forward dst-address-list=blocked action=drop comment="Block blocked" place-before=0
@@ -368,8 +366,6 @@ docker-compose up --build
 MikroTik Blocker is free and open-source. If it saves you time, consider supporting:
 
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤-ea4aaa?style=flat&logo=github)](https://github.com/sponsors/SamoTech)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-f0a500?style=flat)](https://buymeacoffee.com/samotech)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-🎁-5b8def?style=flat)](https://ko-fi.com/samotech)
 
 See [SPONSORS.md](./SPONSORS.md) for tiers and perks.
 

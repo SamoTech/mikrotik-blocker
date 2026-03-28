@@ -5,8 +5,6 @@ MikroTik Blocker is free and open-source. If this tool saves you time or protect
 ## Support Links
 
 - 💖 [GitHub Sponsors](https://github.com/sponsors/SamoTech)
-- ☕ [Buy Me a Coffee](https://buymeacoffee.com/samotech)
-- 🎁 [Ko-fi](https://ko-fi.com/samotech)
 
 ---
 

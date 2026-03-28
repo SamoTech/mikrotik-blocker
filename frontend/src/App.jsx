@@ -4,7 +4,6 @@ import DomainInput from './components/DomainInput';
 import ScriptOutput from './components/ScriptOutput';
 import ManualTerminal from './components/ManualTerminal';
 import SchedulerPanel from './components/SchedulerPanel';
-import MikroTikPush from './components/MikroTikPush';
 import StatsBar from './components/StatsBar';
 import useResolver from './hooks/useResolver';
 import './App.css';
@@ -30,15 +29,15 @@ export default function App() {
   };
 
   const CATEGORIES = [
-    { id: 'ads',    label: '🚦 Ads & Tracking',  color: '#f0a500' },
-    { id: 'adult',  label: '🔞 Adult Content',    color: '#e05252' },
-    { id: 'malware',label: '☠️ Malware/Phishing', color: '#9b59b6' },
+    { id: 'ads',     label: '🚦 Ads & Tracking',   color: '#f0a500' },
+    { id: 'adult',   label: '🔞 Adult Content',     color: '#e05252' },
+    { id: 'malware', label: '☠️ Malware/Phishing',  color: '#9b59b6' },
   ];
 
   const OUTPUT_MODES = [
-    { id: 'both',      label: '◑ Both',       hint: 'CIDR + IPs' },
-    { id: 'cidr-only', label: '📊 CIDR Only',  hint: 'ASN ranges' },
-    { id: 'ips-only',  label: '🔵 IPs Only',   hint: 'DNS resolved' },
+    { id: 'both',      label: '◑ Both',      hint: 'CIDR + IPs' },
+    { id: 'cidr-only', label: '📊 CIDR Only', hint: 'ASN ranges only' },
+    { id: 'ips-only',  label: '🔵 IPs Only',  hint: 'DNS resolved IPs' },
   ];
 
   return (
@@ -66,7 +65,7 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {/* LEFT PANEL */}
+        {/* ── LEFT PANEL ── */}
         <div className="left-panel">
           <DomainInput onResolve={handleResolve} loading={loading} />
 
@@ -83,7 +82,7 @@ export default function App() {
                   className="btn btn-secondary"
                   style={{
                     borderColor: activeCategory === cat.id ? cat.color : undefined,
-                    color: activeCategory === cat.id ? cat.color : undefined,
+                    color:       activeCategory === cat.id ? cat.color : undefined,
                     textAlign: 'left',
                     opacity: loading ? 0.5 : 1,
                   }}
@@ -136,7 +135,7 @@ export default function App() {
 
             <div className="option-row">
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} />
+                <input type="checkbox" checked={addFilter}   onChange={e => setAddFilter(e.target.checked)} />
                 Add firewall drop rule
               </label>
             </div>
@@ -157,7 +156,7 @@ export default function App() {
           <SchedulerPanel onResolve={handleResolve} />
         </div>
 
-        {/* RIGHT PANEL */}
+        {/* ── RIGHT PANEL ── */}
         <div className="right-panel">
           {error && <div className="error-banner">⚠️ {error}</div>}
 
@@ -186,10 +185,10 @@ export default function App() {
                       ? <span className="chip-detail error">❌ {r.error}</span>
                       : (
                         <span className="chip-detail">
-                          {r.cidrs?.length > 0 && `📊 ${r.cidrs.length} CIDR  `}
+                          {r.cidrs?.length   > 0 && `📊 ${r.cidrs.length} CIDR  `}
                           {r.cidrsV6?.length > 0 && `🟣 ${r.cidrsV6.length} CIDRv6  `}
-                          {r.ips?.length > 0 && `🔵 ${r.ips.length} IPv4  `}
-                          {r.ipsV6?.length > 0 && `🟣 ${r.ipsV6.length} IPv6`}
+                          {r.ips?.length     > 0 && `🔵 ${r.ips.length} IPv4  `}
+                          {r.ipsV6?.length   > 0 && `🟢 ${r.ipsV6.length} IPv6`}
                         </span>
                       )
                     }
@@ -199,21 +198,28 @@ export default function App() {
             </div>
           )}
 
+          {/* Tabs: Terminal + Script only */}
           <div className="tab-bar">
-            <button className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`} onClick={() => setActiveTab('terminal')}>
+            <button
+              className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
+              onClick={() => setActiveTab('terminal')}
+            >
               🖥️ Terminal
             </button>
-            <button className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`} onClick={() => setActiveTab('script')}>
+            <button
+              className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`}
+              onClick={() => setActiveTab('script')}
+            >
               📜 Script (.rsc)
-            </button>
-            <button className={`tab-btn ${activeTab === 'push' ? 'active' : ''}`} onClick={() => setActiveTab('push')}>
-              🚀 API Push
             </button>
           </div>
 
-          {activeTab === 'terminal' && <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} />}
-          {activeTab === 'script'   && <ScriptOutput script={script} loading={loading} />}
-          {activeTab === 'push'     && <MikroTikPush script={script} />}
+          {activeTab === 'terminal' && (
+            <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} />
+          )}
+          {activeTab === 'script' && (
+            <ScriptOutput script={script} loading={loading} />
+          )}
         </div>
       </main>
     </div>

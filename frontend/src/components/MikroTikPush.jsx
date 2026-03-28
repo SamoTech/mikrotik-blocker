@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
 export default function MikroTikPush({ script }) {
   const [pushing, setPushing] = useState(false);
   const [results, setResults] = useState(null);
@@ -11,7 +13,7 @@ export default function MikroTikPush({ script }) {
     setPushing(true);
     setResults(null);
     try {
-      const { data } = await axios.post('/api/mikrotik/push', { script });
+      const { data } = await axios.post(`${API_BASE}/api/mikrotik/push`, { script });
       setResults(data.results);
       const errors = data.results.filter(r => r.status === 'error');
       if (errors.length === 0) {
@@ -51,7 +53,7 @@ export default function MikroTikPush({ script }) {
           color: 'var(--text-muted)',
         }}
       >
-        ℹ️ Configure <code>MT_HOST</code>, <code>MT_USER</code>, and <code>MT_PASS</code> in your backend <code>.env</code> file to enable this feature.
+        ℹ️ Configure <code>MT_HOST</code>, <code>MT_USER</code>, and <code>MT_PASS</code> in your Vercel Environment Variables to enable this feature.
       </div>
 
       <button

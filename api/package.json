@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "node-routeros": "^1.6.0"
+  }
+}

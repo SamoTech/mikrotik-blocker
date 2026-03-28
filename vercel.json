@@ -2,12 +2,24 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm install",
+  "installCommand": "cd frontend && npm install && cd ../api && npm install",
+  "functions": {
+    "api/resolve.js":       { "maxDuration": 30 },
+    "api/health.js":        { "maxDuration": 5  },
+    "api/mikrotik/push.js": { "maxDuration": 15 }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)",     "destination": "/index.html" }
   ],
-  "env": {
-    "DNS_SERVERS": "8.8.8.8,1.1.1.1"
-  }
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
+  ]
 }

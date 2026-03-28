@@ -5,6 +5,7 @@ import ScriptOutput from './components/ScriptOutput';
 import ManualTerminal from './components/ManualTerminal';
 import SchedulerPanel from './components/SchedulerPanel';
 import StatsBar from './components/StatsBar';
+import Footer from './components/Footer';
 import useResolver from './hooks/useResolver';
 import './App.css';
 
@@ -71,7 +72,6 @@ export default function App() {
         <div className="left-panel">
           <DomainInput onResolve={handleResolve} loading={loading} />
 
-          {/* Category Blocklists */}
           <div className="options-card">
             <h3>📦 Category Blocklists</h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
@@ -97,7 +97,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Script Options */}
           <div className="options-card">
             <h3>⚙️ Script Options</h3>
 
@@ -154,7 +153,6 @@ export default function App() {
               </label>
             </div>
 
-            {/* Layer7 toggle — highlighted */}
             <div className="option-row" style={{
               marginTop: '0.5rem',
               padding: '0.6rem 0.75rem',
@@ -231,7 +229,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Tabs */}
           <div className="tab-bar">
             <button
               className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
@@ -255,6 +252,8 @@ export default function App() {
           )}
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

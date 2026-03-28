@@ -5,6 +5,9 @@ A production-ready web app that auto-resolves domains into RouterOS-ready block 
 **Live:** [mikrotik-blocker.vercel.app](https://mikrotik-blocker.vercel.app)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SamoTech/mikrotik-blocker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Sponsors](https://img.shields.io/badge/💛-Sponsor-ea4aaa?style=flat)](https://github.com/sponsors/SamoTech)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue?style=flat)](./CHANGELOG.md)
 
 ---
 
@@ -134,7 +137,7 @@ mikrotik-blocker/
 │   ├── resolve.js              ← POST /api/resolve  (main engine v4.1)
 │   ├── health.js               ← GET  /api/health
 │   ├── mikrotik/push.js        ← POST /api/mikrotik/push
-│   └── package.json            ← { "node-routeros": "^1.6.0" }
+│   └── package.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
@@ -142,14 +145,27 @@ mikrotik-blocker/
 │   │   │   ├── ScriptOutput.jsx
 │   │   │   ├── ManualTerminal.jsx
 │   │   │   ├── SchedulerPanel.jsx
-│   │   │   └── StatsBar.jsx
+│   │   │   ├── StatsBar.jsx
+│   │   │   ├── Footer.jsx
+│   │   │   └── PageShell.jsx
+│   │   ├── pages/
+│   │   │   ├── SponsorsPage.jsx
+│   │   │   ├── LicensePage.jsx
+│   │   │   ├── PrivacyPage.jsx
+│   │   │   ├── TermsPage.jsx
+│   │   │   └── ChangelogPage.jsx
 │   │   ├── hooks/useResolver.js
 │   │   ├── App.jsx
 │   │   └── main.jsx
 │   ├── vite.config.js
 │   └── package.json
 ├── backend/                    ← local Express dev server (optional)
+├── .github/
+│   └── FUNDING.yml             ← GitHub Sponsors button
 ├── vercel.json
+├── LICENSE                     ← MIT
+├── CHANGELOG.md
+├── SPONSORS.md
 └── docker-compose.yml
 ```
 
@@ -235,7 +251,6 @@ mikrotik-blocker/
 # ================================================
 
 # Step 1 — Layer7 protocol patterns (HTTP Host + TLS SNI)
-# Blocks domain by NAME — works even when IPs change
 /ip firewall layer7-protocol
 :if ([:len [find name=l7-facebook_com]] = 0) do={
   add name=l7-facebook_com regexp="^.*(Host: [^\r]*facebook\.com|...)"
@@ -252,17 +267,14 @@ mikrotik-blocker/
 
 # Step 3a — IPv4 address list
 /ip firewall address-list
-# facebook.com — ASN ranges (32934, 63293)
 add list=blocked address=157.240.0.0/16  comment="facebook.com-range"
-add list=blocked address=129.134.0.0/17  comment="facebook.com-range"
-# facebook.com — DNS IPs
 add list=blocked address=157.240.241.35  comment="facebook.com-ip"
 
 # Step 3b — IPv6 address list
 /ipv6 firewall address-list
 add list=blocked address=2a03:2880::/32   comment="facebook.com-range6"
 
-# Step 4 — IP firewall drop rules (address-list)
+# Step 4 — IP firewall drop rules
 /ip firewall filter
 :if ([:len [find chain=forward dst-address-list=blocked action=drop]] = 0) do={
   add chain=forward dst-address-list=blocked action=drop comment="Block blocked" place-before=0
@@ -274,7 +286,6 @@ add list=blocked address=2a03:2880::/32   comment="facebook.com-range6"
 
 # Step 5 — Verify
 /ip firewall address-list print where list=blocked
-/ip firewall filter print where dst-address-list=blocked
 /ip firewall layer7-protocol print
 /ipv6 firewall address-list print where list=blocked
 ```
@@ -309,17 +320,13 @@ add list=blocked address=2a03:2880::/32   comment="facebook.com-range6"
 
 ## 🚀 Deploy to Vercel
 
-### One-click
-
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SamoTech/mikrotik-blocker)
-
-### Manual
 
 ```bash
 npx vercel --prod
 ```
 
-No environment variables required — the app is fully stateless. All resolution is on-demand.
+No environment variables required — the app is fully stateless.
 
 ---
 
@@ -327,28 +334,17 @@ No environment variables required — the app is fully stateless. All resolution
 
 **Prerequisites:** Node.js >= 18
 
-### Option A — Vercel Dev (recommended)
-
 ```bash
+# Vercel Dev (recommended)
 npm install -g vercel
 vercel dev
-# Frontend + /api/* serverless functions at http://localhost:3000
-```
+# http://localhost:3000
 
-### Option B — Separate servers
-
-```bash
-# Backend
+# Or separate servers
 cd backend && npm install && npm run dev
+cd frontend && npm install && npm run dev  # http://localhost:5173
 
-# Frontend (new terminal)
-cd frontend && npm install && npm run dev
-# → http://localhost:5173
-```
-
-### Docker
-
-```bash
+# Docker
 docker-compose up --build
 ```
 
@@ -367,6 +363,20 @@ docker-compose up --build
 
 ---
 
+## 💛 Sponsorship
+
+MikroTik Blocker is free and open-source. If it saves you time, consider supporting:
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤-ea4aaa?style=flat&logo=github)](https://github.com/sponsors/SamoTech)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-f0a500?style=flat)](https://buymeacoffee.com/samotech)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-🎁-5b8def?style=flat)](https://ko-fi.com/samotech)
+
+See [SPONSORS.md](./SPONSORS.md) for tiers and perks.
+
+---
+
 ## 📄 License
 
-MIT
+MIT — see [LICENSE](./LICENSE)
+
+Copyright (c) 2026 [SamoTech](https://github.com/SamoTech) (Ossama Hashim)

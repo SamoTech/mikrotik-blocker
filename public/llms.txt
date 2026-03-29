@@ -1,0 +1,27 @@
+# MikroTik Blocker
+
+> A free, open-source web tool that generates MikroTik RouterOS firewall block scripts by resolving ASNs, BGP prefixes, and CIDR ranges automatically.
+
+## What it does
+
+MikroTik Blocker helps network administrators generate ready-to-paste RouterOS scripts to block specific IP addresses, ASNs, or entire BGP prefix ranges on MikroTik routers. It queries the BGPView API to resolve ASN-to-prefix mappings in real time.
+
+## Use cases
+
+- Block a specific country's IP ranges on MikroTik
+- Block an ASN (e.g., a cloud provider or hosting service)
+- Generate a firewall address-list script for RouterOS
+- Bulk IP blocking without manual CIDR lookup
+
+## Tech stack
+
+- Frontend: React + Vite
+- Backend: Node.js API (Vercel serverless)
+- Data source: BGPView API for ASN/prefix resolution
+
+## Links
+
+- App: https://mikrotik-blocker.vercel.app
+- Source: https://github.com/SamoTech/mikrotik-blocker
+- Author: Ossama Hashim (https://github.com/SamoTech)
+- License: MIT

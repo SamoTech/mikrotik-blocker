@@ -21,6 +21,103 @@ import ApiDocs       from './pages/ApiDocs';
 
 import './App.css';
 
+// ASNs that share infrastructure with other critical services
+const SHARED_ASN_WARNINGS = {
+  '15169': {
+    platforms: ['youtube.com', 'google.com', 'googleapis.com', 'googlevideo.com', 'gstatic.com', 'googleusercontent.com'],
+    message: 'AS15169 (Google) — Blocking these IP ranges will also affect Gmail, Drive, Meet, Search, Maps, and Android updates. Consider using DNS + Layer7 blocking instead of IP ranges for YouTube-only blocking.',
+    color: '#f0a500',
+  },
+  '16509': {
+    platforms: ['amazonaws.com', 'cloudfront.net', 'primevideo.com'],
+    message: 'AS16509 (Amazon AWS) — Blocking AWS ranges will break thousands of unrelated websites hosted on AWS, not just Amazon/Prime Video.',
+    color: '#f0a500',
+  },
+  '46489': {
+    platforms: ['twitch.tv', 'epicgames.com'],
+    message: 'AS46489 (Fastly CDN) — This ASN is shared between Twitch, Epic Games, and many other CDN-hosted sites.',
+    color: '#f0a500',
+  },
+};
+
+// Domains that share the same ASN — warn if entered together
+const GOOGLE_DOMAINS = ['youtube.com','google.com','googleapis.com','googlevideo.com','gstatic.com','googleusercontent.com'];
+
+function getWarnings(domains) {
+  const warnings = [];
+
+  // Google/AS15169 warning
+  const hasGoogle = domains.some(d => GOOGLE_DOMAINS.some(g => d === g || d.endsWith('.' + g)));
+  if (hasGoogle) {
+    warnings.push({
+      type: 'asn',
+      color: '#f0a500',
+      message: 'AS15169 (Google): Blocking these IP ranges will also affect Gmail, Drive, Meet, Search, and Android updates. For YouTube-only blocking, use DNS + Layer7 instead of IP ranges.',
+    });
+  }
+
+  // Shared-ASN warning (multiple Google domains together)
+  const googleMatches = domains.filter(d => GOOGLE_DOMAINS.some(g => d === g || d.endsWith('.' + g)));
+  if (googleMatches.length > 1) {
+    warnings.push({
+      type: 'duplicate-asn',
+      color: '#5b8def',
+      message: `These domains share the same ASN (AS15169): ${googleMatches.join(', ')} — the generated script will contain duplicate IP ranges. Consider keeping only one.`,
+    });
+  }
+
+  return warnings;
+}
+
+function WarningBanner({ warnings }) {
+  if (!warnings.length) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+      {warnings.map((w, i) => (
+        <div key={i} style={{
+          padding: '0.65rem 0.85rem',
+          borderRadius: '8px',
+          border: `1px solid ${w.color}`,
+          background: `${w.color}18`,
+          fontSize: '0.8rem',
+          lineHeight: 1.5,
+          color: 'var(--text)',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'flex-start',
+        }}>
+          <span style={{ fontSize: '1rem', marginTop: '1px' }}>{w.type === 'asn' ? '⚠️' : 'ℹ️'}</span>
+          <span>{w.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LimitationsNotice() {
+  return (
+    <div style={{
+      marginTop: '0.75rem',
+      padding: '0.65rem 0.85rem',
+      borderRadius: '8px',
+      border: '1px solid var(--border)',
+      background: 'var(--surface2)',
+      fontSize: '0.76rem',
+      color: 'var(--text-muted)',
+      lineHeight: 1.6,
+    }}>
+      <strong style={{ color: 'var(--text)', display: 'block', marginBottom: '0.3rem' }}>Known limitations</strong>
+      <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+        <li>Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks still apply.</li>
+        <li>TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.</li>
+        <li>Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.</li>
+        <li>IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.</li>
+        <li>Motivated users on mobile data (LTE/5G) are outside this tool's threat model.</li>
+      </ul>
+    </div>
+  );
+}
+
 function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -38,6 +135,9 @@ function HomePage() {
   const { resolved, script, stats, loading, error, resolve } = useResolver();
 
   const currentOptions = { listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7, routerOS };
+
+  const parsedDomains = domainsValue.split('\n').map(d => d.trim()).filter(Boolean);
+  const warnings = getWarnings(parsedDomains);
 
   const handleResolve = useCallback((domains, category = null) => {
     resolve(domains, { ...currentOptions, category });
@@ -107,7 +207,7 @@ function HomePage() {
       </header>
 
       <main className="app-main">
-        {/* ── LEFT PANEL ── */}
+        {/* LEFT PANEL */}
         <div className="left-panel">
           <DomainInput
             onResolve={handleResolve}
@@ -115,6 +215,10 @@ function HomePage() {
             value={domainsValue}
             onChange={setDomainsValue}
           />
+
+          {/* Live domain warnings */}
+          {warnings.length > 0 && <WarningBanner warnings={warnings} />}
+
           <FileImport onImport={handleFileImport} />
 
           <div className="options-card" style={{ marginTop: '0.75rem' }}>
@@ -243,7 +347,7 @@ function HomePage() {
           </div>
 
           <PresetManager
-            domains={domainsValue.split('\n').map(d => d.trim()).filter(Boolean)}
+            domains={parsedDomains}
             options={currentOptions}
             onLoad={handleLoadPreset}
           />
@@ -251,7 +355,7 @@ function HomePage() {
           <SchedulerPanel onResolve={handleResolve} />
         </div>
 
-        {/* ── RIGHT PANEL ── */}
+        {/* RIGHT PANEL */}
         <div className="right-panel">
           {error && <div className="error-banner">⚠️ {error}</div>}
           {stats && <StatsBar stats={stats} />}
@@ -298,6 +402,9 @@ function HomePage() {
 
           {activeTab === 'terminal' && <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} addLayer7={addLayer7} routerOS={routerOS} />}
           {activeTab === 'script'   && <ScriptOutput script={script} loading={loading} />}
+
+          {/* Limitations notice — always visible */}
+          <LimitationsNotice />
         </div>
       </main>
 

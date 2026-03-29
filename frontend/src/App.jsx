@@ -1,29 +1,38 @@
 import React, { useState, useCallback } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import DomainInput from './components/DomainInput';
-import ScriptOutput from './components/ScriptOutput';
+import DomainInput    from './components/DomainInput';
+import ScriptOutput   from './components/ScriptOutput';
 import ManualTerminal from './components/ManualTerminal';
 import SchedulerPanel from './components/SchedulerPanel';
-import StatsBar from './components/StatsBar';
-import Footer from './components/Footer';
-import PresetManager from './components/PresetManager';
-import FileImport from './components/FileImport';
+import StatsBar       from './components/StatsBar';
+import Footer         from './components/Footer';
+import PresetManager  from './components/PresetManager';
+import FileImport     from './components/FileImport';
 import ThemeToggle, { useTheme } from './components/ThemeToggle';
-import useResolver from './hooks/useResolver';
+import useResolver    from './hooks/useResolver';
+
+import SponsorsPage  from './pages/SponsorsPage';
+import ChangelogPage from './pages/ChangelogPage';
+import LicensePage   from './pages/LicensePage';
+import PrivacyPage   from './pages/PrivacyPage';
+import TermsPage     from './pages/TermsPage';
+import ApiDocs       from './pages/ApiDocs';
+
 import './App.css';
 
-export default function App() {
+function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
 
-  const [listName, setListName]       = useState('blocked');
-  const [outputMode, setOutputMode]   = useState('both');
-  const [addFilter, setAddFilter]     = useState(true);
+  const [listName,    setListName]    = useState('blocked');
+  const [outputMode,  setOutputMode]  = useState('both');
+  const [addFilter,   setAddFilter]   = useState(true);
   const [addSrcBlock, setAddSrcBlock] = useState(false);
   const [includeIPv6, setIncludeIPv6] = useState(true);
-  const [addLayer7, setAddLayer7]     = useState(false);
-  const [routerOS, setRouterOS]       = useState('v7');
-  const [domainsValue, setDomainsValue] = useState('');
-  const [activeTab, setActiveTab]     = useState('terminal');
+  const [addLayer7,   setAddLayer7]   = useState(false);
+  const [routerOS,    setRouterOS]    = useState('v7');
+  const [domainsValue,  setDomainsValue]  = useState('');
+  const [activeTab,     setActiveTab]     = useState('terminal');
   const [activeCategory, setActiveCategory] = useState(null);
 
   const { resolved, script, stats, loading, error, resolve } = useResolver();
@@ -40,9 +49,9 @@ export default function App() {
   };
 
   const handleLoadPreset = (domains, opts) => {
-    if (opts.listName   !== undefined) setListName(opts.listName);
-    if (opts.outputMode !== undefined) setOutputMode(opts.outputMode);
-    if (opts.addFilter  !== undefined) setAddFilter(opts.addFilter);
+    if (opts.listName    !== undefined) setListName(opts.listName);
+    if (opts.outputMode  !== undefined) setOutputMode(opts.outputMode);
+    if (opts.addFilter   !== undefined) setAddFilter(opts.addFilter);
     if (opts.addSrcBlock !== undefined) setAddSrcBlock(opts.addSrcBlock);
     if (opts.includeIPv6 !== undefined) setIncludeIPv6(opts.includeIPv6);
     if (opts.addLayer7   !== undefined) setAddLayer7(opts.addLayer7);
@@ -155,8 +164,7 @@ export default function App() {
                     key={v}
                     onClick={() => setRouterOS(v)}
                     style={{
-                      padding: '0.3rem 0.9rem',
-                      borderRadius: '6px',
+                      padding: '0.3rem 0.9rem', borderRadius: '6px',
                       border: `1px solid ${routerOS === v ? 'var(--primary)' : 'var(--border)'}`,
                       background: routerOS === v ? 'var(--primary)' : 'var(--surface2)',
                       color: routerOS === v ? '#fff' : 'var(--text-muted)',
@@ -180,8 +188,7 @@ export default function App() {
                     onClick={() => setOutputMode(m.id)}
                     title={m.hint}
                     style={{
-                      padding: '0.3rem 0.7rem',
-                      borderRadius: '6px',
+                      padding: '0.3rem 0.7rem', borderRadius: '6px',
                       border: `1px solid ${outputMode === m.id ? 'var(--primary)' : 'var(--border)'}`,
                       background: outputMode === m.id ? 'var(--primary)' : 'var(--surface2)',
                       color: outputMode === m.id ? '#fff' : 'var(--text-muted)',
@@ -226,9 +233,9 @@ export default function App() {
                     🔍 Layer7 Protocol Block
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.4 }}>
-                    Matches HTTP Host header + TLS SNI — blocks domain by name regardless of IP changes.
+                    Matches HTTP Host header + TLS SNI.
                     <br />
-                    <span style={{ color: '#f0a500' }}>⚠️ High CPU on large traffic — use on edge/border router only.</span>
+                    <span style={{ color: '#f0a500' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
                   </div>
                 </div>
               </label>
@@ -296,5 +303,20 @@ export default function App() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/"          element={<HomePage />} />
+      <Route path="/sponsors"  element={<SponsorsPage />} />
+      <Route path="/changelog" element={<ChangelogPage />} />
+      <Route path="/license"   element={<LicensePage />} />
+      <Route path="/privacy"   element={<PrivacyPage />} />
+      <Route path="/terms"     element={<TermsPage />} />
+      <Route path="/docs"      element={<ApiDocs />} />
+      <Route path="*"          element={<HomePage />} />
+    </Routes>
   );
 }

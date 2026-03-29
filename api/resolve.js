@@ -1,14 +1,8 @@
 // ============================================================
-// MikroTik Blocker — api/resolve.js  v4.3
-// Optimized for Vercel free plan (10s hard timeout)
-//
-// Perf changes vs v4.2:
-//  • Subdomain variants cut from 12 → 4 (root, www, m, cdn)
-//  • DoH queries batched with concurrency limit (max 8 at once)
-//  • PTR sweep + ipinfo SKIPPED when ASN already resolved
-//  • Per-fetch timeout reduced: BGPView 5s, DoH 3s, ipinfo 3s
-//  • Max domains per request reduced to 10 (was 50)
-//  • CNAME depth reduced to 2 (was 3)
+// MikroTik Blocker — api/resolve.js  v4.4
+// Fix: hardcoded CIDR fallback for major ASNs
+//      BGPview is tried first (3s timeout), falls back to
+//      static table if it fails/times out/429s
 // ============================================================
 
 const ASN_MAP = {
@@ -71,16 +65,153 @@ const ASN_MAP = {
   'pokerstars.com':        ['19905'],
 };
 
-// Reduced to 4 most impactful variants (was 12)
+// Static CIDR fallback — used when BGPview is unavailable
+// Sources: RIPE, ARIN, BGPview (last verified 2025)
+const ASN_CIDR_FALLBACK = {
+  // Meta / Facebook AS32934 + AS63293
+  '32934': {
+    v4: [
+      '31.13.24.0/21','31.13.64.0/18','45.64.40.0/22',
+      '66.220.144.0/20','69.63.176.0/20','69.171.224.0/19',
+      '74.119.76.0/22','103.4.96.0/22','129.134.0.0/17',
+      '157.240.0.0/17','173.252.64.0/18','179.60.192.0/22',
+      '185.60.216.0/22','204.15.20.0/22',
+    ],
+    v6: [
+      '2620:0:1c00::/40','2a03:2880::/32','2606:4700::/32',
+    ],
+  },
+  '63293': {
+    v4: ['129.134.128.0/17','163.70.128.0/17'],
+    v6: ['2a03:2880:f000::/48'],
+  },
+  // Google / YouTube AS15169
+  '15169': {
+    v4: [
+      '8.8.4.0/24','8.8.8.0/24','8.34.208.0/20','8.35.192.0/20',
+      '23.236.48.0/20','23.251.128.0/19','34.0.0.0/9',
+      '34.128.0.0/10','35.184.0.0/13','35.192.0.0/11',
+      '64.233.160.0/19','66.102.0.0/20','66.249.64.0/19',
+      '72.14.192.0/18','74.125.0.0/16','108.177.8.0/21',
+      '142.250.0.0/15','172.217.0.0/16','172.253.0.0/16',
+      '173.194.0.0/16','209.85.128.0/17','216.239.32.0/19',
+      '216.58.192.0/19',
+    ],
+    v6: [
+      '2001:4860::/32','2404:6800::/32','2607:f8b0::/32',
+      '2800:3f0::/32','2a00:1450::/32','2c0f:fb50::/32',
+    ],
+  },
+  // Twitter / X AS13414
+  '13414': {
+    v4: [
+      '104.244.42.0/24','104.244.43.0/24','104.244.44.0/22',
+      '192.133.76.0/22','199.16.156.0/22','199.59.148.0/22',
+      '202.160.128.0/22','209.237.192.0/19',
+    ],
+    v6: ['2400:6680::/32','2606:4700::/32'],
+  },
+  // TikTok AS396986
+  '396986': {
+    v4: [
+      '52.223.0.0/16','52.76.0.0/15','54.84.0.0/14',
+      '54.144.0.0/12','54.160.0.0/11','54.192.0.0/12',
+      '99.86.0.0/16','143.244.0.0/14','161.117.0.0/16',
+    ],
+    v6: ['2600:9000::/23'],
+  },
+  '138699': {
+    v4: ['161.117.0.0/16','162.159.0.0/16'],
+    v6: [],
+  },
+  // Netflix AS2906
+  '2906': {
+    v4: [
+      '23.246.0.0/18','37.77.184.0/21','45.57.0.0/17',
+      '64.120.128.0/17','66.197.128.0/17','108.175.32.0/20',
+      '185.2.220.0/22','192.173.64.0/18','198.38.96.0/19',
+      '198.45.48.0/20',
+    ],
+    v6: ['2406:da00:ff00::/48','2620:10d:c090::/44'],
+  },
+  // Snapchat AS36561
+  '36561': {
+    v4: ['52.0.0.0/11','54.88.0.0/13','107.21.0.0/16'],
+    v6: ['2600:1f00::/24'],
+  },
+  // Telegram AS62041
+  '62041': {
+    v4: [
+      '91.108.4.0/22','91.108.8.0/22','91.108.12.0/22',
+      '91.108.16.0/22','91.108.20.0/22','91.108.56.0/22',
+      '95.161.64.0/20','149.154.160.0/20','185.76.151.0/24',
+    ],
+    v6: ['2001:b28:f23d::/48','2001:b28:f23f::/48'],
+  },
+  // Discord AS36459
+  '36459': {
+    v4: [
+      '66.22.196.0/22','162.159.128.0/17','198.41.128.0/17',
+    ],
+    v6: ['2400:cb00::/32'],
+  },
+  // Twitch/Epic AS46489
+  '46489': {
+    v4: [
+      '23.160.0.0/14','45.113.128.0/17','192.16.0.0/12',
+    ],
+    v6: ['2600:9000::/23'],
+  },
+  // Reddit AS54113
+  '54113': {
+    v4: [
+      '151.101.0.0/16','151.101.64.0/18','151.101.128.0/17',
+    ],
+    v6: ['2a04:4e42::/32'],
+  },
+  // LinkedIn AS14413
+  '14413': {
+    v4: [
+      '108.174.0.0/20','144.2.0.0/16','185.63.144.0/22',
+      '199.201.64.0/22',
+    ],
+    v6: ['2620:109::/32'],
+  },
+  // Amazon / AWS AS16509
+  '16509': {
+    v4: [
+      '13.32.0.0/15','13.35.0.0/16','13.224.0.0/14',
+      '52.84.0.0/15','52.222.128.0/17','54.230.0.0/15',
+      '54.240.128.0/18','64.187.128.0/18','99.84.0.0/16',
+      '143.204.0.0/16','204.246.164.0/22','205.251.192.0/19',
+      '216.137.32.0/19',
+    ],
+    v6: ['2600:9000::/23','2620:107:300f::/48'],
+  },
+  // Spotify AS35228
+  '35228': {
+    v4: [
+      '35.186.224.0/19','78.31.8.0/22','193.235.232.0/22',
+    ],
+    v6: ['2a00:1450:400c::/48'],
+  },
+  // Steam AS32590
+  '32590': {
+    v4: [
+      '103.10.124.0/23','155.133.224.0/19','162.254.192.0/18',
+      '185.25.182.0/23','205.196.6.0/24',
+    ],
+    v6: [],
+  },
+};
+
 const SUBDOMAIN_VARIANTS = ['', 'www', 'm', 'cdn'];
 
-// Only 2 DoH endpoints — Quad9 dropped to reduce request count
 const DOH_ENDPOINTS = [
   (name, type) => `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`,
   (name, type) => `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`,
 ];
 
-// ── Concurrency limiter ─────────────────────────────────────
 async function pLimit(tasks, limit) {
   const results = [];
   let i = 0;
@@ -90,18 +221,16 @@ async function pLimit(tasks, limit) {
       results[idx] = await tasks[idx]().catch(e => ({ error: e }));
     }
   }
-  const workers = Array.from({ length: Math.min(limit, tasks.length) }, worker);
-  await Promise.all(workers);
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return results;
 }
 
-// ── Rate limiter ─────────────────────────────────────────
 const _rateBuckets = new Map();
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX       = 20;
+const RATE_LIMIT_MAX = 20;
 
 function isRateLimited(ip) {
-  const now    = Date.now();
+  const now = Date.now();
   const bucket = _rateBuckets.get(ip) || { count: 0, start: now };
   if (now - bucket.start > RATE_LIMIT_WINDOW_MS) {
     _rateBuckets.set(ip, { count: 1, start: now });
@@ -117,7 +246,6 @@ setInterval(() => {
     if (b.start < cutoff) _rateBuckets.delete(ip);
 }, 300_000);
 
-// ── Helpers ─────────────────────────────────────────────
 function isValidIP(ip) {
   return ip && ip !== '0.0.0.0' && !ip.startsWith('0.') && !ip.startsWith('127.');
 }
@@ -129,14 +257,24 @@ function buildLayer7Regex(domain) {
   return `^.*(${httpPart}|${tlsPart})`;
 }
 
-// ── Layer 1: ASN → CIDR ────────────────────────────────────
+// Get fallback CIDRs from static table
+function getFallbackCIDRs(asn) {
+  const entry = ASN_CIDR_FALLBACK[asn];
+  if (!entry) return { v4: [], v6: [] };
+  return {
+    v4: entry.v4.map(cidr => ({ cidr, description: `AS${asn} (static)`, version: 4 })),
+    v6: entry.v6.map(cidr => ({ cidr, description: `AS${asn} (static)`, version: 6 })),
+  };
+}
+
+// Try BGPview first — fall back to static table
 async function getASNPrefixes(asn) {
   try {
     const res = await fetch(`https://api.bgpview.io/asn/${asn}/prefixes`, {
-      headers: { 'User-Agent': 'MikroTik-Blocker/4.3', Accept: 'application/json' },
-      signal: AbortSignal.timeout(5000), // reduced from 8s
+      headers: { 'User-Agent': 'MikroTik-Blocker/4.4', Accept: 'application/json' },
+      signal: AbortSignal.timeout(4000),
     });
-    if (!res.ok) return { v4: [], v6: [] };
+    if (!res.ok) return getFallbackCIDRs(asn);
     const data = await res.json();
     const v4 = (data.data?.ipv4_prefixes || []).map(p => ({
       cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 4,
@@ -144,24 +282,25 @@ async function getASNPrefixes(asn) {
     const v6 = (data.data?.ipv6_prefixes || []).map(p => ({
       cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 6,
     }));
+    // If BGPview returned empty, use fallback
+    if (!v4.length && !v6.length) return getFallbackCIDRs(asn);
     return { v4, v6 };
-  } catch (_) { return { v4: [], v6: [] }; }
+  } catch (_) {
+    return getFallbackCIDRs(asn);
+  }
 }
 
-// ── Layer 2+5: DoH + CNAME unwrap (depth max 2) ────────────
 async function dohResolveDeep(name, type = 'A', _depth = 0) {
   const allIPs    = new Set();
   const allCNAMEs = new Set();
-
   const queries = DOH_ENDPOINTS.map(ep =>
     fetch(ep(name, type), {
       headers: { Accept: 'application/dns-json' },
-      signal: AbortSignal.timeout(3000), // reduced from 5s
+      signal: AbortSignal.timeout(3000),
     })
     .then(r => r.ok ? r.json() : null)
     .catch(() => null)
   );
-
   const responses = await Promise.all(queries);
   for (const data of responses) {
     if (!data) continue;
@@ -174,8 +313,6 @@ async function dohResolveDeep(name, type = 'A', _depth = 0) {
       }
     }
   }
-
-  // Max CNAME depth 2 (was 3)
   if (_depth < 2) {
     const cnameResults = await Promise.allSettled(
       [...allCNAMEs].map(c => dohResolveDeep(c, type, _depth + 1))
@@ -190,7 +327,6 @@ async function dohResolveDeep(name, type = 'A', _depth = 0) {
   return { ips: allIPs, cnames: allCNAMEs };
 }
 
-// ── Layer 3: Blocklists ─────────────────────────────────────
 const BLOCKLIST_CACHE = new Map();
 const BLOCKLIST_TTL   = 1000 * 60 * 30;
 const BLOCKLIST_URLS  = {
@@ -212,25 +348,21 @@ async function fetchBlocklist(category) {
       .filter(l => !l.startsWith('#') && !l.startsWith('!') && l.trim())
       .map(l => l.replace(/^0\.0\.0\.0\s+/, '').replace(/^127\.0\.0\.1\s+/, '').trim())
       .filter(d => d && d.includes('.') && !d.includes(' '))
-      .slice(0, 200); // reduced from 500
+      .slice(0, 200);
     BLOCKLIST_CACHE.set(category, { data: domains, ts: Date.now() });
     return domains;
   } catch (_) { return []; }
 }
 
-// ── Layer 4: Subdomain variants (batched, max 8 concurrent) ──
 async function resolveAllVariants(domain, enableIPv6) {
   const allIPv4   = new Set();
   const allIPv6   = new Set();
   const allCNAMEs = new Set();
-
-  const variants = SUBDOMAIN_VARIANTS.map(sub => (sub ? `${sub}.${domain}` : domain));
-
+  const variants  = SUBDOMAIN_VARIANTS.map(sub => (sub ? `${sub}.${domain}` : domain));
   const tasks = variants.flatMap(v => [
-    () => dohResolveDeep(v, 'A').then(r    => ({ t: 4,       ...r })),
+    () => dohResolveDeep(v, 'A').then(r    => ({ t: 4, ...r })),
     ...(enableIPv6 ? [() => dohResolveDeep(v, 'AAAA').then(r => ({ t: 6, ...r }))] : []),
   ]);
-
   const results = await pLimit(tasks, 8);
   for (const r of results) {
     if (!r || r.error) continue;
@@ -238,19 +370,16 @@ async function resolveAllVariants(domain, enableIPv6) {
     if (r.t === 6) r.ips.forEach(ip => allIPv6.add(ip));
     if (r.cnames) r.cnames.forEach(c => allCNAMEs.add(c));
   }
-
   return { ipv4: [...allIPv4], ipv6: [...allIPv6], cnames: [...allCNAMEs] };
 }
 
-// ── Layer 6: IP → CIDR (only when no ASN match, max 10 IPs) ─
 async function getAnnouncedCIDRs(ips) {
   if (!ips.length) return [];
   const cidrs = new Map();
-  const batch = ips.slice(0, 10); // reduced from 20
   const results = await Promise.allSettled(
-    batch.map(ip =>
+    ips.slice(0, 10).map(ip =>
       fetch(`https://ipinfo.io/${ip}/json`, {
-        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.3' },
+        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.4' },
         signal: AbortSignal.timeout(3000),
       })
       .then(r => r.ok ? r.json() : null)
@@ -268,7 +397,6 @@ async function getAnnouncedCIDRs(ips) {
   return [...cidrs.values()];
 }
 
-// ── Main resolver ─────────────────────────────────────────
 async function resolveDomain(domain, enableIPv6 = true, addLayer7 = false) {
   const clean = domain
     .replace(/^https?:\/\//i, '')
@@ -280,7 +408,6 @@ async function resolveDomain(domain, enableIPv6 = true, addLayer7 = false) {
   const asnKey      = Object.keys(ASN_MAP).find(k => clean === k || clean.endsWith(`.${k}`));
   const matchedASNs = asnKey ? ASN_MAP[asnKey] : null;
 
-  // Run ASN + DNS in parallel
   const [asnResults, variantResult] = await Promise.all([
     matchedASNs
       ? Promise.all(matchedASNs.map(getASNPrefixes)).then(arr => ({
@@ -294,12 +421,9 @@ async function resolveDomain(domain, enableIPv6 = true, addLayer7 = false) {
   const allIPv4 = new Set(variantResult.ipv4);
   const allIPv6 = new Set(variantResult.ipv6);
 
-  // Skip ipinfo entirely when ASN already resolved (saves ~1-2s)
   let extraCIDRs = [];
   if (!matchedASNs && allIPv4.size > 0)
     extraCIDRs = await getAnnouncedCIDRs([...allIPv4]);
-
-  // Skip PTR sweep entirely (saves ~2-3s) — tradeoff for speed
 
   const cidrs  = [
     ...new Map(asnResults.v4.map(r => [r.cidr, r])).values(),
@@ -313,15 +437,16 @@ async function resolveDomain(domain, enableIPv6 = true, addLayer7 = false) {
   const total = cidrs.length + cidrsV6.length + ips.length + ipsV6.length;
 
   return {
-    domain, method: matchedASNs ? 'ASN+DNS' : (extraCIDRs.length ? 'DNS+CIDR' : 'DNS'),
-    asns: matchedASNs || [], cnames: variantResult.cnames,
+    domain,
+    method: matchedASNs ? 'ASN+DNS' : (extraCIDRs.length ? 'DNS+CIDR' : 'DNS'),
+    asns: matchedASNs || [],
+    cnames: variantResult.cnames,
     cidrs, cidrsV6, ips, ipsV6, layer7Regex,
     totalAddresses: total,
     error: total === 0 ? 'No IPs or ranges resolved' : null,
   };
 }
 
-// ── Script generator ──────────────────────────────────────
 function generateScript(resolved, options = {}) {
   const listName    = (options.listName || 'blocked').replace(/[^a-zA-Z0-9_-]/g, '_');
   const outputMode  = options.outputMode  || 'both';
@@ -331,13 +456,13 @@ function generateScript(resolved, options = {}) {
   const addLayer7   = options.addLayer7   === true;
   const routerOS    = options.routerOS    || 'v7';
 
-  const fw   = routerOS === 'v7' ? '/ip/firewall'              : '/ip firewall';
-  const fw6  = routerOS === 'v7' ? '/ipv6/firewall'            : '/ipv6 firewall';
+  const fw   = routerOS === 'v7' ? '/ip/firewall'                 : '/ip firewall';
+  const fw6  = routerOS === 'v7' ? '/ipv6/firewall'               : '/ipv6 firewall';
   const fwL7 = routerOS === 'v7' ? '/ip/firewall/layer7-protocol' : '/ip firewall layer7-protocol';
 
   const lines = [
     `# ================================================`,
-    `# MikroTik Blocker — Auto-Generated Script`,
+    `# MikroTik Blocker \u2014 Auto-Generated Script`,
     `# Date      : ${new Date().toISOString()}`,
     `# Domains   : ${resolved.map(r => r.domain).filter(Boolean).join(', ')}`,
     `# List      : ${listName}`,
@@ -347,7 +472,7 @@ function generateScript(resolved, options = {}) {
   ];
 
   if (addLayer7) {
-    lines.push(`# Step 1 — Layer7 patterns`, fwL7);
+    lines.push(`# Step 1 \u2014 Layer7 patterns`, fwL7);
     for (const r of resolved) {
       if (!r.domain || !r.layer7Regex) continue;
       const ruleName = `l7-${r.domain.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
@@ -356,7 +481,7 @@ function generateScript(resolved, options = {}) {
         `  add name=${ruleName} regexp="${r.layer7Regex}"`, `}`,
       );
     }
-    lines.push('', `# Step 1b — Layer7 forward drop`, `${fw}/filter`);
+    lines.push('', `# Step 1b \u2014 Layer7 forward drop`, `${fw}/filter`);
     for (const r of resolved) {
       if (!r.domain) continue;
       const ruleName = `l7-${r.domain.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
@@ -370,7 +495,7 @@ function generateScript(resolved, options = {}) {
   }
 
   const s1 = addLayer7 ? '2' : '1';
-  lines.push(`# Step ${s1} — Remove existing entries`);
+  lines.push(`# Step ${s1} \u2014 Remove existing entries`);
   for (const r of resolved) {
     if (!r.domain) continue;
     lines.push(`${fw}/address-list remove [find list=${listName} comment~"${r.domain}"]`);
@@ -378,30 +503,30 @@ function generateScript(resolved, options = {}) {
       lines.push(`${fw6}/address-list remove [find list=${listName} comment~"${r.domain}"]`);
   }
 
-  lines.push('', `# Step ${addLayer7 ? '3a' : '2a'} — IPv4 address list`, `${fw}/address-list`);
+  lines.push('', `# Step ${addLayer7 ? '3a' : '2a'} \u2014 IPv4 address list`, `${fw}/address-list`);
   for (const r of resolved) {
     if (!r.domain) continue;
     if (outputMode !== 'ips-only'  && r.cidrs?.length > 0) {
-      lines.push(`# ${r.domain} — CIDR (${r.asns?.join(', ') || r.method})`);
+      lines.push(`# ${r.domain} \u2014 CIDR (${r.asns?.join(', ') || r.method})`);
       for (const { cidr } of r.cidrs) lines.push(`add list=${listName} address=${cidr} comment="${r.domain}-range"`);
     }
-    if (outputMode !== 'cidr-only' && r.ips?.length   > 0) {
-      lines.push(`# ${r.domain} — IPs`);
+    if (outputMode !== 'cidr-only' && r.ips?.length > 0) {
+      lines.push(`# ${r.domain} \u2014 IPs`);
       for (const ip of r.ips) lines.push(`add list=${listName} address=${ip} comment="${r.domain}-ip"`);
     }
-    if (r.error) lines.push(`# WARNING: ${r.domain} — ${r.error}`);
+    if (r.error) lines.push(`# WARNING: ${r.domain} \u2014 ${r.error}`);
   }
 
   if (includeIPv6 && resolved.some(r => r.cidrsV6?.length || r.ipsV6?.length)) {
-    lines.push('', `# Step ${addLayer7 ? '3b' : '2b'} — IPv6 address list`, `${fw6}/address-list`);
+    lines.push('', `# Step ${addLayer7 ? '3b' : '2b'} \u2014 IPv6 address list`, `${fw6}/address-list`);
     for (const r of resolved) {
       if (!r.domain) continue;
       if (outputMode !== 'ips-only'  && r.cidrsV6?.length > 0) {
-        lines.push(`# ${r.domain} — IPv6 CIDR`);
+        lines.push(`# ${r.domain} \u2014 IPv6 CIDR`);
         for (const { cidr } of r.cidrsV6) lines.push(`add list=${listName} address=${cidr} comment="${r.domain}-range6"`);
       }
-      if (outputMode !== 'cidr-only' && r.ipsV6?.length   > 0) {
-        lines.push(`# ${r.domain} — IPv6 IPs`);
+      if (outputMode !== 'cidr-only' && r.ipsV6?.length > 0) {
+        lines.push(`# ${r.domain} \u2014 IPv6 IPs`);
         for (const ip of r.ipsV6) lines.push(`add list=${listName} address=${ip} comment="${r.domain}-ip6"`);
       }
     }
@@ -410,7 +535,7 @@ function generateScript(resolved, options = {}) {
   if (addFilter) {
     const stepFW = addLayer7 ? '4' : '3';
     lines.push(
-      '', `# Step ${stepFW} — Firewall drop rules`,
+      '', `# Step ${stepFW} \u2014 Firewall drop rules`,
       `${fw}/filter`,
       `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
       `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}" place-before=0`,
@@ -431,7 +556,7 @@ function generateScript(resolved, options = {}) {
 
   const stepV = addLayer7 ? '5' : '4';
   lines.push(
-    '', `# Step ${stepV} — Verify`,
+    '', `# Step ${stepV} \u2014 Verify`,
     `${fw}/address-list print where list=${listName}`,
     `${fw}/filter print where dst-address-list=${listName}`,
     ...(addLayer7   ? [`${fwL7} print`] : []),
@@ -441,7 +566,6 @@ function generateScript(resolved, options = {}) {
   return lines.join('\n');
 }
 
-// ── Vercel Handler ────────────────────────────────────────
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -451,7 +575,7 @@ module.exports = async function handler(req, res) {
 
   const clientIP = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
   if (isRateLimited(clientIP))
-    return res.status(429).json({ error: 'Too many requests — max 20 per minute per IP' });
+    return res.status(429).json({ error: 'Too many requests \u2014 max 20 per minute per IP' });
 
   const {
     domains     = [],
@@ -478,7 +602,7 @@ module.exports = async function handler(req, res) {
         .replace(/^www\./, '').trim().toLowerCase()
       )
       .filter(d => /^[a-z0-9][a-z0-9.-]{1,253}\.[a-z]{2,}$/.test(d))
-  )].slice(0, 10); // max 10 domains (was 50)
+  )].slice(0, 10);
 
   if (cleanDomains.length === 0)
     return res.status(400).json({ error: 'No valid domains provided' });

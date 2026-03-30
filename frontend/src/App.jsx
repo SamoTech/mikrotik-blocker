@@ -18,6 +18,7 @@ import LicensePage   from './pages/LicensePage';
 import PrivacyPage   from './pages/PrivacyPage';
 import TermsPage     from './pages/TermsPage';
 import ApiDocs       from './pages/ApiDocs';
+import AboutPage     from './pages/AboutPage';
 
 import './App.css';
 
@@ -75,17 +76,13 @@ function getWarnings(domains) {
   return warnings;
 }
 
-// ─── Warning banner ────────────────────────────────────────────────────────
 function WarningBanner({ warnings }) {
   if (!warnings.length) return null;
   return (
     <div className="warning-stack" role="alert" aria-label="Domain warnings">
       {warnings.map((w, i) => (
-        <div
-          key={i}
-          className="warning-item"
-          style={{ border: `1px solid ${w.color}`, background: `${w.color}18`, borderRadius: '8px' }}
-        >
+        <div key={i} className="warning-item"
+          style={{ border: `1px solid ${w.color}`, background: `${w.color}18`, borderRadius: '8px' }}>
           <span className="warning-icon">{w.type === 'asn' ? '⚠️' : 'ℹ️'}</span>
           <span>{w.message}</span>
         </div>
@@ -94,7 +91,6 @@ function WarningBanner({ warnings }) {
   );
 }
 
-// ─── Info Panel ────────────────────────────────────────────────────────────
 const STEPS = [
   { num: '1', label: 'Domain Input',    hint: 'Enter domains, one per line' },
   { num: '2', label: 'Script Options',  hint: 'Address list, ROS version, flags' },
@@ -153,7 +149,6 @@ function InfoPanel() {
   );
 }
 
-// ─── Progress bar ─────────────────────────────────────────────────────────
 function ProgressBar() {
   return (
     <div className="progress-bar-wrap" role="progressbar" aria-label="Resolving domains">
@@ -162,7 +157,6 @@ function ProgressBar() {
   );
 }
 
-// ─── Accordion wrapper ───────────────────────────────────────────────────
 function Accordion({ title, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyRef = useRef(null);
@@ -173,30 +167,23 @@ function Accordion({ title, defaultOpen = true, children }) {
 
   return (
     <div className="options-card" style={{ paddingBottom: open ? '1.1rem' : '0.1rem' }}>
-      <div
-        className="accordion-header"
+      <div className="accordion-header"
         onClick={() => setOpen(o => !o)}
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(o => !o)}
-      >
+        role="button" tabIndex={0} aria-expanded={open}
+        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(o => !o)}>
         <h3 style={{ marginBottom: 0 }}>{title}</h3>
         <span className={`accordion-chevron ${open ? 'open' : ''}`} aria-hidden>▼</span>
       </div>
-      <div
-        ref={bodyRef}
+      <div ref={bodyRef}
         className={`accordion-body ${open ? 'expanded' : 'collapsed'}`}
         style={{ maxHeight: open ? height : '0' }}
-        aria-hidden={!open}
-      >
+        aria-hidden={!open}>
         <div style={{ paddingTop: '0.75rem' }}>{children}</div>
       </div>
     </div>
   );
 }
 
-// ─── HomePage ─────────────────────────────────────────────────────────────
 function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -258,16 +245,12 @@ function HomePage() {
 
   return (
     <div className="app">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
-          success: { iconTheme: { primary: 'var(--success)', secondary: '#fff' } },
-          error:   { iconTheme: { primary: 'var(--danger)',  secondary: '#fff' } },
-        }}
-      />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
+        success: { iconTheme: { primary: 'var(--success)', secondary: '#fff' } },
+        error:   { iconTheme: { primary: 'var(--danger)',  secondary: '#fff' } },
+      }} />
 
-      {/* ── Header ── */}
       <header className="app-header">
         <div className="header-inner">
           <div className="logo" role="banner" aria-label="MikroTik Blocker">
@@ -291,30 +274,14 @@ function HomePage() {
       </header>
 
       <main className="app-main">
-
-        {/* ── INFO PANEL ── */}
         <InfoPanel />
 
-        {/* ── config-zone ── */}
         <div className="config-zone">
           <div className="input-col">
-            <DomainInput
-              onResolve={handleResolve}
-              loading={loading}
-              value={domainsValue}
-              onChange={setDomainsValue}
-            />
-
+            <DomainInput onResolve={handleResolve} loading={loading} value={domainsValue} onChange={setDomainsValue} />
             {warnings.length > 0 && <WarningBanner warnings={warnings} />}
-
             <FileImport onImport={handleFileImport} />
-
-            <PresetManager
-              domains={parsedDomains}
-              options={currentOptions}
-              onLoad={handleLoadPreset}
-            />
-
+            <PresetManager domains={parsedDomains} options={currentOptions} onLoad={handleLoadPreset} />
             <SchedulerPanel onResolve={handleResolve} />
           </div>
 
@@ -322,27 +289,17 @@ function HomePage() {
             <Accordion title="⚙️ Script Options" defaultOpen={true}>
               <div className="option-row">
                 <label htmlFor="listNameInput">Address List Name</label>
-                <input
-                  id="listNameInput"
-                  type="text"
-                  value={listName}
+                <input id="listNameInput" type="text" value={listName}
                   onChange={e => setListName(e.target.value)}
-                  placeholder="blocked"
-                  className="text-input"
-                  aria-label="Address list name"
-                />
+                  placeholder="blocked" className="text-input" aria-label="Address list name" />
               </div>
 
               <div className="option-row">
                 <label>RouterOS Version</label>
                 <div className="toggle-group" role="group" aria-label="RouterOS version">
                   {['v6', 'v7'].map(v => (
-                    <button
-                      key={v}
-                      className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
-                      onClick={() => setRouterOS(v)}
-                      aria-pressed={routerOS === v}
-                    >{v}</button>
+                    <button key={v} className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
+                      onClick={() => setRouterOS(v)} aria-pressed={routerOS === v}>{v}</button>
                   ))}
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
@@ -356,44 +313,36 @@ function HomePage() {
                 <label>Output Mode</label>
                 <div className="toggle-group" role="group" aria-label="Output mode">
                   {OUTPUT_MODES.map(m => (
-                    <button
-                      key={m.id}
-                      className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
-                      onClick={() => setOutputMode(m.id)}
-                      title={m.hint}
-                      aria-pressed={outputMode === m.id}
-                    >{m.label}</button>
+                    <button key={m.id} className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
+                      onClick={() => setOutputMode(m.id)} title={m.hint} aria-pressed={outputMode === m.id}>
+                      {m.label}
+                    </button>
                   ))}
                 </div>
               </div>
 
               <div className="option-row">
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} aria-label="Add firewall drop rule" />
+                  <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} />
                   Add firewall drop rule
                 </label>
               </div>
               <div className="option-row">
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} aria-label="Also block inbound src" />
+                  <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} />
                   Also block inbound (src)
                 </label>
               </div>
               <div className="option-row">
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} aria-label="Include IPv6" />
+                  <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} />
                   Include IPv6 (AAAA + /ipv6)
                 </label>
               </div>
 
               <div className={`layer7-option ${addLayer7 ? 'active' : ''}`}>
                 <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={addLayer7}
-                    onChange={e => setAddLayer7(e.target.checked)}
-                    aria-label="Enable Layer7 Protocol Block"
-                  />
+                  <input type="checkbox" checked={addLayer7} onChange={e => setAddLayer7(e.target.checked)} />
                   <div>
                     <div style={{ fontWeight: 600, color: addLayer7 ? 'var(--danger)' : 'var(--text)', fontSize: '0.84rem' }}>
                       🔍 Layer7 Protocol Block
@@ -409,7 +358,6 @@ function HomePage() {
           </div>
         </div>
 
-        {/* ── output zone ── */}
         <div className="output-zone">
           {loading && <ProgressBar />}
           {error   && <div className="error-banner" role="alert">⚠️ {error}</div>}
@@ -449,18 +397,14 @@ function HomePage() {
 
           {hasResults && (
             <div className="tab-bar" role="tablist" aria-label="Output format">
-              <button
-                className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
-                onClick={() => setActiveTab('terminal')}
-                role="tab"
-                aria-selected={activeTab === 'terminal'}
-              >🖥️ Terminal (interactive)</button>
-              <button
-                className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`}
-                onClick={() => setActiveTab('script')}
-                role="tab"
-                aria-selected={activeTab === 'script'}
-              >📜 Script (.rsc file)</button>
+              <button className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
+                onClick={() => setActiveTab('terminal')} role="tab" aria-selected={activeTab === 'terminal'}>
+                🖥️ Terminal (interactive)
+              </button>
+              <button className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`}
+                onClick={() => setActiveTab('script')} role="tab" aria-selected={activeTab === 'script'}>
+                📜 Script (.rsc file)
+              </button>
             </div>
           )}
 
@@ -479,7 +423,6 @@ function HomePage() {
             <ScriptOutput script={script} loading={loading} />
           )}
         </div>
-
       </main>
 
       <Footer />
@@ -491,6 +434,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/"          element={<HomePage />} />
+      <Route path="/about"     element={<AboutPage />} />
       <Route path="/sponsors"  element={<SponsorsPage />} />
       <Route path="/changelog" element={<ChangelogPage />} />
       <Route path="/license"   element={<LicensePage />} />

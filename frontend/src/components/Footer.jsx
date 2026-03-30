@@ -5,6 +5,7 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   const links = [
+    { to: '/about',     label: 'ℹ️ About' },
     { to: '/sponsors',  label: '💛 Sponsors' },
     { to: '/changelog', label: '📋 Changelog' },
     { to: '/license',   label: '📄 License' },
@@ -33,39 +34,24 @@ export default function Footer() {
         <span>MIT License</span>
         <span style={{ opacity: 0.5 }}>•</span>
         <span>Built by{' '}
-          <a
-            href="https://github.com/SamoTech"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: 'var(--primary)', textDecoration: 'none' }}
-          >SamoTech</a>
+          <a href="https://github.com/SamoTech" target="_blank" rel="noreferrer"
+            style={{ color: 'var(--primary)', textDecoration: 'none' }}>SamoTech</a>
         </span>
       </div>
 
       <nav style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 1rem' }}>
         {links.map(l => (
-          <Link
-            key={l.to}
-            to={l.to}
-            style={{
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              transition: 'color 0.15s',
-            }}
+          <Link key={l.to} to={l.to}
+            style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.15s' }}
             onMouseEnter={e => e.target.style.color = 'var(--primary)'}
-            onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
-          >
+            onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}>
             {l.label}
           </Link>
         ))}
-        <a
-          href="https://github.com/SamoTech/mikrotik-blocker"
-          target="_blank"
-          rel="noreferrer"
+        <a href="https://github.com/SamoTech/mikrotik-blocker" target="_blank" rel="noreferrer"
           style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
           onMouseEnter={e => e.target.style.color = 'var(--primary)'}
-          onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
-        >
+          onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}>
           ⭐ GitHub
         </a>
       </nav>

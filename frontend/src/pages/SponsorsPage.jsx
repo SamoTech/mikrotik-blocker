@@ -47,16 +47,14 @@ const TIERS = [
       'Thank-you shoutout on social media',
     ],
     price: '$5 / month',
-    cta: 'Support on Ko-fi',
-    ctaHref: 'https://ko-fi.com/samotechhq',
+    cta: 'Sponsor on GitHub',
+    ctaHref: 'https://github.com/sponsors/SamoTech',
     sponsors: [],
   },
 ];
 
 const LINKS = [
-  { label: 'Ko-fi',          href: 'https://ko-fi.com/samotechhq',                        icon: '☕', color: '#29abe0' },
-  { label: 'GitHub Sponsors', href: 'https://github.com/sponsors/SamoTech',               icon: '💖', color: '#e05252' },
-  { label: 'PayPal',          href: 'https://paypal.me/samohossam',                        icon: '💳', color: '#009cde' },
+  { label: 'GitHub Sponsors', href: 'https://github.com/sponsors/SamoTech', icon: '💖', color: '#e05252' },
 ];
 
 const STATS = [
@@ -92,7 +90,7 @@ export default function SponsorsPage() {
         Sponsors get visibility in front of <strong>network engineers and MikroTik admins</strong> worldwide.
       </p>
 
-      {/* Quick donate buttons */}
+      {/* GitHub Sponsors button */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '2.5rem' }}>
         {LINKS.map(l => (
           <a
@@ -110,7 +108,6 @@ export default function SponsorsPage() {
               textDecoration: 'none',
               fontWeight: 600,
               fontSize: '0.85rem',
-              transition: 'background 0.15s',
             }}
           >
             {l.icon} {l.label}
@@ -186,7 +183,7 @@ export default function SponsorsPage() {
       }}>
         <strong style={{ color: 'var(--text)', fontSize: '0.9rem' }}>🏢 Enterprise or custom deal?</strong>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.4rem 0 0.75rem' }}>
-          Need a custom integration, white-label, or dedicated support SLA? Let's talk.
+          Need a custom integration, white-label, or dedicated support SLA? Let’s talk.
         </p>
         <a
           href="mailto:samo.hossam@gmail.com?subject=Enterprise%20Inquiry%20%E2%80%94%20MikroTik%20Blocker"

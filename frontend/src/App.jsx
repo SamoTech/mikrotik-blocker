@@ -94,67 +94,68 @@ function WarningBanner({ warnings }) {
   );
 }
 
-// ─── Unified Info Panel (always shown at top of page) ──────────────────────
+// ─── Info Panel ────────────────────────────────────────────────────────────
 const STEPS = [
-  { num: '1', text: 'Enter domain names in the Domain Input box' },
-  { num: '2', text: 'Configure options in Script Options' },
-  { num: '3', text: <>Click <strong>Generate Script</strong> or press <kbd className="kbd">Ctrl+Enter</kbd></> },
-  { num: '4', text: 'Copy and paste into your MikroTik terminal' },
+  { num: '1', label: 'Domain Input',    hint: 'Enter domains, one per line' },
+  { num: '2', label: 'Script Options',  hint: 'Address list, ROS version, flags' },
+  { num: '3', label: 'Generate Script', hint: <>Press <kbd className="kbd">Ctrl+Enter</kbd> or click the button</> },
+  { num: '4', label: 'Paste & Run',     hint: 'Copy into your MikroTik terminal' },
 ];
 
 const LIMITATIONS = [
-  { icon: '🔓', text: 'Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks + Layer7 SNI still apply.' },
-  { icon: '🔐', text: 'TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.' },
-  { icon: '📱', text: 'Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.' },
-  { icon: '🔄', text: 'IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.' },
-  { icon: '📶', text: "Motivated users on mobile data (LTE/5G) are outside this tool's threat model." },
+  { icon: '🔓', short: 'DoH bypass',           detail: 'Clients using DNS-over-HTTPS skip DNS rules — use IP + Layer7.' },
+  { icon: '🔐', short: 'TLS 1.3 ECH',           detail: 'ESNI/ECH hides SNI from Layer7 matching on modern browsers.' },
+  { icon: '📱', short: 'Cert-pinned apps',      detail: 'WhatsApp, Instagram etc. bypass NGFW/MiTM inspection.' },
+  { icon: '🔄', short: 'IP ranges rotate',      detail: 'Re-run periodically or enable the Auto-Refresh scheduler.' },
+  { icon: '📶', short: 'Mobile LTE/5G',         detail: 'Users on cellular data are outside this tool\'s scope.' },
 ];
 
 function InfoPanel() {
   return (
-    <div className="info-panel" role="region" aria-label="Getting started and known limitations">
-      {/* ── Left: Getting Started ── */}
+    <div className="info-panel" role="region" aria-label="Quick start and known limitations">
+
+      {/* ── LEFT: Quick Start ── */}
       <div className="info-panel-col">
-        <div className="info-panel-header">
-          <span className="info-panel-icon">🔒</span>
-          <div>
-            <div className="info-panel-title">Generate your RouterOS block script</div>
-            <div className="info-panel-sub">Enter domains and click <strong>Generate Script</strong> to create a ready-to-paste RouterOS script.</div>
-          </div>
+        <div className="ip-section-label">
+          <span className="ip-section-dot ip-section-dot--blue" />
+          Quick Start
         </div>
-        <div className="info-steps">
+        <div className="ip-steps-grid">
           {STEPS.map(s => (
-            <div key={s.num} className="info-step">
-              <span className="info-step-num">{s.num}</span>
-              <span className="info-step-text">{s.text}</span>
+            <div key={s.num} className="ip-step">
+              <span className="ip-step-num">{s.num}</span>
+              <div>
+                <div className="ip-step-label">{s.label}</div>
+                <div className="ip-step-hint">{s.hint}</div>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Divider ── */}
+      {/* ── DIVIDER ── */}
       <div className="info-panel-divider" aria-hidden />
 
-      {/* ── Right: Known Limitations ── */}
+      {/* ── RIGHT: Limitations ── */}
       <div className="info-panel-col">
-        <div className="info-panel-header">
-          <span className="info-panel-icon">⚠️</span>
-          <div>
-            <div className="info-panel-title">Known Limitations</div>
-            <div className="info-panel-sub">Understand the boundaries of IP/DNS blocking before deploying.</div>
-          </div>
+        <div className="ip-section-label">
+          <span className="ip-section-dot ip-section-dot--orange" />
+          Known Limitations
+          <span className="ip-count">{LIMITATIONS.length}</span>
         </div>
-        <table className="info-limits-table" aria-label="Known limitations">
-          <tbody>
-            {LIMITATIONS.map((l, i) => (
-              <tr key={i}>
-                <td className="info-limits-icon" aria-hidden>{l.icon}</td>
-                <td className="info-limits-text">{l.text}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="ip-limits">
+          {LIMITATIONS.map((l, i) => (
+            <div key={i} className="ip-limit-row">
+              <span className="ip-limit-icon">{l.icon}</span>
+              <div>
+                <span className="ip-limit-short">{l.short}</span>
+                <span className="ip-limit-detail">{l.detail}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+
     </div>
   );
 }
@@ -168,7 +169,7 @@ function ProgressBar() {
   );
 }
 
-// ─── Accordion wrapper ────────────────────────────────────────────────────
+// ─── Accordion wrapper ───────────────────────────────────────────────────
 function Accordion({ title, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyRef = useRef(null);
@@ -310,10 +311,10 @@ function HomePage() {
 
       <main className="app-main">
 
-        {/* ── INFO PANEL — always at the very top of main ── */}
+        {/* ── INFO PANEL ── */}
         <InfoPanel />
 
-        {/* ── config-zone: Domain Input (left) + Script Options (right) ── */}
+        {/* ── config-zone ── */}
         <div className="config-zone">
           <div className="input-col">
             <DomainInput
@@ -446,7 +447,6 @@ function HomePage() {
             </Accordion>
           </div>
         </div>
-        {/* end config-zone */}
 
         {/* ── output zone ── */}
         <div className="output-zone">
@@ -518,7 +518,6 @@ function HomePage() {
             <ScriptOutput script={script} loading={loading} />
           )}
         </div>
-        {/* end output-zone */}
 
       </main>
 

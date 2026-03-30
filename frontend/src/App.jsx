@@ -21,7 +21,7 @@ import ApiDocs       from './pages/ApiDocs';
 
 import './App.css';
 
-// ─── ASN shared-infrastructure warnings ────────────────────────────────────
+// ─── ASN shared-infrastructure warnings ─────────────────────────────────────
 const SHARED_ASN_WARNINGS = {
   '15169': {
     platforms: ['youtube.com','google.com','googleapis.com','googlevideo.com','gstatic.com','googleusercontent.com'],
@@ -75,7 +75,7 @@ function getWarnings(domains) {
   return warnings;
 }
 
-// ─── Warning banner ───────────────────────────────────────────────
+// ─── Warning banner ────────────────────────────────────────────────────────
 function WarningBanner({ warnings }) {
   if (!warnings.length) return null;
   return (
@@ -94,52 +94,72 @@ function WarningBanner({ warnings }) {
   );
 }
 
-// ─── Limitations notice ──────────────────────────────────────────────
-function LimitationsNotice() {
-  return (
-    <div className="limitations-notice">
-      <strong>Known limitations</strong>
-      <ul>
-        <li>Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks + Layer7 SNI still apply.</li>
-        <li>TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.</li>
-        <li>Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.</li>
-        <li>IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.</li>
-        <li>Motivated users on mobile data (LTE/5G) are outside this tool's threat model.</li>
-      </ul>
-    </div>
-  );
-}
+// ─── Unified Info Panel (Getting Started + Known Limitations side-by-side) ─
+const STEPS = [
+  { num: '1', text: 'Enter domain names in the Domain Input box' },
+  { num: '2', text: 'Configure options in Script Options' },
+  { num: '3', text: <>Click <strong>Generate Script</strong> or press <kbd className="kbd">Ctrl+Enter</kbd></> },
+  { num: '4', text: 'Copy and paste into your MikroTik terminal' },
+];
 
-// ─── Empty state (output area before first resolve) ───────────────────────
-function EmptyState() {
+const LIMITATIONS = [
+  { icon: '🔓', text: 'Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks + Layer7 SNI still apply.' },
+  { icon: '🔐', text: 'TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.' },
+  { icon: '📱', text: 'Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.' },
+  { icon: '🔄', text: 'IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.' },
+  { icon: '📶', text: 'Motivated users on mobile data (LTE/5G) are outside this tool\'s threat model.' },
+];
+
+function InfoPanel() {
   return (
-    <div className="empty-state" role="region" aria-label="Getting started">
-      <div className="empty-state-icon">🔒</div>
-      <h3>Generate your RouterOS block script</h3>
-      <p>Enter domains above and click <strong>Generate Script</strong> to create a ready-to-paste RouterOS script.</p>
-      <div className="empty-state-steps">
-        <div className="empty-step">
-          <span className="empty-step-num">1</span>
-          <span>Enter domain names in the Domain Input box</span>
+    <div className="info-panel" role="region" aria-label="Getting started and known limitations">
+      {/* ── Left: Getting Started ── */}
+      <div className="info-panel-col">
+        <div className="info-panel-header">
+          <span className="info-panel-icon">🔒</span>
+          <div>
+            <div className="info-panel-title">Generate your RouterOS block script</div>
+            <div className="info-panel-sub">Enter domains and click <strong>Generate Script</strong> to create a ready-to-paste RouterOS script.</div>
+          </div>
         </div>
-        <div className="empty-step">
-          <span className="empty-step-num">2</span>
-          <span>Configure options in Script Options</span>
+        <div className="info-steps">
+          {STEPS.map(s => (
+            <div key={s.num} className="info-step">
+              <span className="info-step-num">{s.num}</span>
+              <span className="info-step-text">{s.text}</span>
+            </div>
+          ))}
         </div>
-        <div className="empty-step">
-          <span className="empty-step-num">3</span>
-          <span>Click <strong>Generate Script</strong> or press <kbd className="kbd">Ctrl+Enter</kbd></span>
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="info-panel-divider" aria-hidden />
+
+      {/* ── Right: Known Limitations ── */}
+      <div className="info-panel-col">
+        <div className="info-panel-header">
+          <span className="info-panel-icon">⚠️</span>
+          <div>
+            <div className="info-panel-title">Known Limitations</div>
+            <div className="info-panel-sub">Understand the boundaries of IP/DNS blocking before deploying.</div>
+          </div>
         </div>
-        <div className="empty-step">
-          <span className="empty-step-num">4</span>
-          <span>Copy and paste into your MikroTik terminal</span>
-        </div>
+        <table className="info-limits-table" aria-label="Known limitations">
+          <tbody>
+            {LIMITATIONS.map((l, i) => (
+              <tr key={i}>
+                <td className="info-limits-icon" aria-hidden>{l.icon}</td>
+                <td className="info-limits-text">{l.text}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
-// ─── Progress bar ──────────────────────────────────────────────────────
+// ─── Progress bar ─────────────────────────────────────────────────────────
 function ProgressBar() {
   return (
     <div className="progress-bar-wrap" role="progressbar" aria-label="Resolving domains">
@@ -148,11 +168,10 @@ function ProgressBar() {
   );
 }
 
-// ─── Accordion wrapper ────────────────────────────────────────────────
+// ─── Accordion wrapper ────────────────────────────────────────────────────
 function Accordion({ title, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyRef = useRef(null);
-
   const [height, setHeight] = useState('auto');
   useEffect(() => {
     if (bodyRef.current) setHeight(bodyRef.current.scrollHeight + 'px');
@@ -183,7 +202,7 @@ function Accordion({ title, defaultOpen = true, children }) {
   );
 }
 
-// ─── HomePage ──────────────────────────────────────────────────────────────
+// ─── HomePage ─────────────────────────────────────────────────────────────
 function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -232,14 +251,11 @@ function HomePage() {
     });
   };
 
-  // Keyboard shortcut: Ctrl+Enter → generate
   useEffect(() => {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (parsedDomains.length > 0 && !loading) {
-          handleResolve(parsedDomains);
-        }
+        if (parsedDomains.length > 0 && !loading) handleResolve(parsedDomains);
       }
     };
     window.addEventListener('keydown', handler);
@@ -272,7 +288,6 @@ function HomePage() {
       {/* ── Header ── */}
       <header className="app-header">
         <div className="header-inner">
-          {/* Logo — intentionally NOT a link; cursor:default set in CSS */}
           <div className="logo" role="banner" aria-label="MikroTik Blocker">
             <span className="logo-icon" aria-hidden>🔒</span>
             <div>
@@ -295,10 +310,8 @@ function HomePage() {
 
       <main className="app-main">
 
-        {/* ── TOP: config-zone (Domain Input left | Script Options right) ── */}
+        {/* ── TOP: config-zone ── */}
         <div className="config-zone">
-
-          {/* LEFT COL: Domain Input + File Import + Category Blocklists + Presets + Scheduler */}
           <div className="input-col">
             <DomainInput
               onResolve={handleResolve}
@@ -311,7 +324,6 @@ function HomePage() {
 
             <FileImport onImport={handleFileImport} />
 
-            {/* Category blocklists */}
             <Accordion title="📦 Category Blocklists" defaultOpen={false}>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
                 Fetch domain lists from oisd.nl and StevenBlack hosts
@@ -341,10 +353,8 @@ function HomePage() {
             <SchedulerPanel onResolve={handleResolve} />
           </div>
 
-          {/* RIGHT COL: Script Options only */}
           <div className="options-col">
             <Accordion title="⚙️ Script Options" defaultOpen={true}>
-
               <div className="option-row">
                 <label htmlFor="listNameInput">Address List Name</label>
                 <input
@@ -394,7 +404,7 @@ function HomePage() {
 
               <div className="option-row">
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={addFilter}   onChange={e => setAddFilter(e.target.checked)} aria-label="Add firewall drop rule" />
+                  <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} aria-label="Add firewall drop rule" />
                   Add firewall drop rule
                 </label>
               </div>
@@ -435,13 +445,16 @@ function HomePage() {
         </div>
         {/* end config-zone */}
 
-        {/* ── BOTTOM: full-width output zone ── */}
+        {/* ── BOTTOM: output zone ── */}
         <div className="output-zone">
+
+          {/* Unified info panel — only before first result */}
+          {!hasResults && !loading && <InfoPanel />}
+
           {loading && <ProgressBar />}
           {error   && <div className="error-banner" role="alert">⚠️ {error}</div>}
           {stats   && <StatsBar stats={stats} />}
 
-          {/* Resolved domain chips */}
           {resolved.length > 0 && (
             <div className="resolved-summary" aria-live="polite">
               <h3>📌 Resolved Results</h3>
@@ -474,7 +487,6 @@ function HomePage() {
             </div>
           )}
 
-          {/* Tab bar — only show after first result */}
           {hasResults && (
             <div className="tab-bar" role="tablist" aria-label="Output format">
               <button
@@ -492,8 +504,6 @@ function HomePage() {
             </div>
           )}
 
-          {/* Output panels */}
-          {!hasResults && !loading && <EmptyState />}
           {loading && (
             <div className="skeleton-block">
               {[100,85,70,90,60].map((w, i) => (
@@ -509,7 +519,6 @@ function HomePage() {
             <ScriptOutput script={script} loading={loading} />
           )}
 
-          <LimitationsNotice />
         </div>
         {/* end output-zone */}
 

@@ -1,8 +1,11 @@
 // ============================================================
-// MikroTik Blocker — api/resolve.js  v4.4
-// Fix: hardcoded CIDR fallback for major ASNs
-//      BGPview is tried first (3s timeout), falls back to
-//      static table if it fails/times out/429s
+// MikroTik Blocker — api/resolve.js  v4.5
+// Fix: removed place-before=0 from all generated firewall drop
+//      rules. place-before=0 was inserting drops at position 0
+//      which could override established/related accept rules
+//      already at the top of the chain on the user's router.
+//      Rules are now appended (safe default); users can
+//      manually reorder after reviewing their chain.
 // ============================================================
 
 const ASN_MAP = {
@@ -271,7 +274,7 @@ function getFallbackCIDRs(asn) {
 async function getASNPrefixes(asn) {
   try {
     const res = await fetch(`https://api.bgpview.io/asn/${asn}/prefixes`, {
-      headers: { 'User-Agent': 'MikroTik-Blocker/4.4', Accept: 'application/json' },
+      headers: { 'User-Agent': 'MikroTik-Blocker/4.5', Accept: 'application/json' },
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return getFallbackCIDRs(asn);
@@ -282,7 +285,6 @@ async function getASNPrefixes(asn) {
     const v6 = (data.data?.ipv6_prefixes || []).map(p => ({
       cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 6,
     }));
-    // If BGPview returned empty, use fallback
     if (!v4.length && !v6.length) return getFallbackCIDRs(asn);
     return { v4, v6 };
   } catch (_) {
@@ -379,7 +381,7 @@ async function getAnnouncedCIDRs(ips) {
   const results = await Promise.allSettled(
     ips.slice(0, 10).map(ip =>
       fetch(`https://ipinfo.io/${ip}/json`, {
-        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.4' },
+        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.5' },
         signal: AbortSignal.timeout(3000),
       })
       .then(r => r.ok ? r.json() : null)
@@ -468,6 +470,9 @@ function generateScript(resolved, options = {}) {
     `# List      : ${listName}`,
     `# Mode      : ${outputMode}${includeIPv6 ? ' + IPv6' : ''}${addLayer7 ? ' + Layer7' : ''}`,
     `# RouterOS  : ${routerOS}`,
+    `# IMPORTANT : Review rule order after import. Drop rules are`,
+    `#             appended to the chain — ensure they come AFTER`,
+    `#             your established/related accept rules.`,
     `# ================================================`, '',
   ];
 
@@ -485,9 +490,10 @@ function generateScript(resolved, options = {}) {
     for (const r of resolved) {
       if (!r.domain) continue;
       const ruleName = `l7-${r.domain.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      // No place-before — appended to chain; user should verify position
       lines.push(
         `:if ([:len [find chain=forward layer7-protocol=${ruleName} action=drop]] = 0) do={`,
-        `  add chain=forward layer7-protocol=${ruleName} action=drop comment="L7-block ${r.domain}" place-before=0`,
+        `  add chain=forward layer7-protocol=${ruleName} action=drop comment="L7-block ${r.domain}"`,
         `}`,
       );
     }
@@ -534,22 +540,26 @@ function generateScript(resolved, options = {}) {
 
   if (addFilter) {
     const stepFW = addLayer7 ? '4' : '3';
+    // No place-before — rules are appended; user must ensure established/related
+    // accept rules are already above this in the forward chain.
     lines.push(
       '', `# Step ${stepFW} \u2014 Firewall drop rules`,
+      `# NOTE: Rules appended to end of chain. Verify position relative`,
+      `#       to your established/related accept rules before applying.`,
       `${fw}/filter`,
       `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
-      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}" place-before=0`,
+      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}"`,
       `}`,
     );
     if (addSrcBlock) lines.push(
       `:if ([:len [find chain=forward src-address-list=${listName} action=drop]] = 0) do={`,
-      `  add chain=forward src-address-list=${listName} action=drop comment="Block ${listName} inbound" place-before=0`,
+      `  add chain=forward src-address-list=${listName} action=drop comment="Block ${listName} inbound"`,
       `}`,
     );
     if (includeIPv6) lines.push(
       `${fw6}/filter`,
       `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
-      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} IPv6" place-before=0`,
+      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} IPv6"`,
       `}`,
     );
   }

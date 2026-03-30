@@ -94,7 +94,7 @@ function WarningBanner({ warnings }) {
   );
 }
 
-// ─── Unified Info Panel (Getting Started + Known Limitations side-by-side) ─
+// ─── Unified Info Panel (always shown at top of page) ──────────────────────
 const STEPS = [
   { num: '1', text: 'Enter domain names in the Domain Input box' },
   { num: '2', text: 'Configure options in Script Options' },
@@ -107,7 +107,7 @@ const LIMITATIONS = [
   { icon: '🔐', text: 'TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.' },
   { icon: '📱', text: 'Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.' },
   { icon: '🔄', text: 'IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.' },
-  { icon: '📶', text: 'Motivated users on mobile data (LTE/5G) are outside this tool\'s threat model.' },
+  { icon: '📶', text: "Motivated users on mobile data (LTE/5G) are outside this tool's threat model." },
 ];
 
 function InfoPanel() {
@@ -310,7 +310,10 @@ function HomePage() {
 
       <main className="app-main">
 
-        {/* ── TOP: config-zone ── */}
+        {/* ── INFO PANEL — always at the very top of main ── */}
+        <InfoPanel />
+
+        {/* ── config-zone: Domain Input (left) + Script Options (right) ── */}
         <div className="config-zone">
           <div className="input-col">
             <DomainInput
@@ -445,12 +448,8 @@ function HomePage() {
         </div>
         {/* end config-zone */}
 
-        {/* ── BOTTOM: output zone ── */}
+        {/* ── output zone ── */}
         <div className="output-zone">
-
-          {/* Unified info panel — only before first result */}
-          {!hasResults && !loading && <InfoPanel />}
-
           {loading && <ProgressBar />}
           {error   && <div className="error-banner" role="alert">⚠️ {error}</div>}
           {stats   && <StatsBar stats={stats} />}
@@ -518,7 +517,6 @@ function HomePage() {
           {hasResults && activeTab === 'script' && (
             <ScriptOutput script={script} loading={loading} />
           )}
-
         </div>
         {/* end output-zone */}
 

@@ -82,7 +82,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.4rem 1.5rem;
+  padding: 0.85rem 1.25rem;       /* was 1.4rem 1.5rem */
   margin-bottom: 1rem;
   animation: fadeIn 0.4s ease;
 }
@@ -90,8 +90,8 @@
 .info-panel-col {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding: 0 1.25rem;
+  gap: 0.5rem;                    /* was 0.85rem */
+  padding: 0 1.1rem;
 }
 .info-panel-col:first-child { padding-left: 0; }
 .info-panel-col:last-child  { padding-right: 0; }
@@ -106,72 +106,72 @@
 .info-panel-header {
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 .info-panel-icon {
-  font-size: 1.55rem;
+  font-size: 1.25rem;             /* was 1.55rem */
   line-height: 1;
   flex-shrink: 0;
   margin-top: 2px;
 }
 .info-panel-title {
-  font-size: 0.9rem;
+  font-size: 0.84rem;             /* was 0.9rem */
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.1rem;
   line-height: 1.3;
 }
 .info-panel-sub {
-  font-size: 0.76rem;
+  font-size: 0.73rem;             /* was 0.76rem */
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* Steps */
-.info-steps { display: flex; flex-direction: column; gap: 0.5rem; }
+.info-steps { display: flex; flex-direction: column; gap: 0.28rem; }  /* was 0.5rem */
 .info-step {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 0.81rem;
+  gap: 0.5rem;
+  font-size: 0.79rem;             /* was 0.81rem */
   color: var(--text-muted);
 }
 .info-step-num {
-  width: 22px; height: 22px;
+  width: 19px; height: 19px;      /* was 22px */
   border-radius: 50%;
   background: var(--primary);
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.info-step-text { line-height: 1.4; }
+.info-step-text { line-height: 1.35; }
 
 /* Limitations table */
 .info-limits-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.79rem;
+  font-size: 0.76rem;             /* was 0.79rem */
 }
 .info-limits-table tbody tr {
   border-bottom: 1px solid var(--border);
 }
 .info-limits-table tbody tr:last-child { border-bottom: none; }
 .info-limits-icon {
-  width: 28px;
+  width: 24px;
   text-align: center;
-  font-size: 0.95rem;
-  padding: 0.45rem 0.3rem 0.45rem 0;
-  vertical-align: top;
-  line-height: 1.5;
+  font-size: 0.85rem;             /* was 0.95rem */
+  padding: 0.22rem 0.25rem 0.22rem 0;  /* was 0.45rem */
+  vertical-align: middle;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 .info-limits-text {
-  padding: 0.45rem 0;
+  padding: 0.22rem 0;             /* was 0.45rem */
   color: var(--text-muted);
-  line-height: 1.55;
-  vertical-align: top;
+  line-height: 1.45;
+  vertical-align: middle;
 }
 
 /* ─── Cards & Option panels ─────────────────────────────────────── */
@@ -495,10 +495,8 @@
 @media (max-width: 900px) {
   .app-main { padding: 1rem; gap: 1rem; }
   .config-zone { grid-template-columns: 1fr; }
-  .info-panel {
-    grid-template-columns: 1fr;
-  }
-  .info-panel-divider { width: 100%; height: 1px; margin: 0.75rem 0; }
+  .info-panel { grid-template-columns: 1fr; }
+  .info-panel-divider { width: 100%; height: 1px; margin: 0.5rem 0; }
   .info-panel-col { padding: 0; }
   .app-header { padding: 0.75rem 1rem; }
   .header-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }

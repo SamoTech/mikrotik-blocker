@@ -10,9 +10,10 @@ function safeStr(val) {
 
 export default function ScriptOutput({ script, loading }) {
   const [previousScript, setPreviousScript] = useState(null);
-  const [validating, setValidating]         = useState(false);
-  const [validation, setValidation]         = useState(null);
-  const [showDiff, setShowDiff]             = useState(false);
+  const [validating,     setValidating]     = useState(false);
+  const [validation,     setValidation]     = useState(null);
+  const [showDiff,       setShowDiff]       = useState(false);
+  const [copied,         setCopied]         = useState(false);
   const prevRef = useRef(null);
 
   useEffect(() => {
@@ -44,7 +45,11 @@ export default function ScriptOutput({ script, loading }) {
 
   function handleCopy() {
     if (!script) return;
-    navigator.clipboard.writeText(script).then(() => toast.success('Script copied!'));
+    navigator.clipboard.writeText(script).then(() => {
+      setCopied(true);
+      toast.success('Script copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   function handleDownload() {
@@ -56,25 +61,64 @@ export default function ScriptOutput({ script, loading }) {
     a.download = 'mikrotik-block.rsc';
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('Script downloaded!');
   }
+
+  const lineCount = script ? script.split('\n').length : 0;
+  const byteSize  = script ? new Blob([script]).size : 0;
+  const sizeLabel = byteSize > 1024 ? `${(byteSize / 1024).toFixed(1)} KB` : `${byteSize} B`;
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-sm"   onClick={handleCopy}     disabled={!script}>📋 Copy</button>
-        <button className="btn btn-secondary btn-sm" onClick={handleDownload} disabled={!script}>⬇️ Download .rsc</button>
+      <div className="script-toolbar">
+        <button
+          className={`btn btn-sm ${copied ? 'btn-copied' : 'btn-primary'}`}
+          onClick={handleCopy}
+          disabled={!script}
+          aria-label="Copy script to clipboard"
+        >
+          {copied ? '✓ Copied!' : '📋 Copy'}
+        </button>
+
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={handleDownload}
+          disabled={!script}
+          aria-label="Download script as .rsc file"
+        >
+          ⬇️ Download .rsc
+        </button>
+
         <button
           className="btn btn-secondary btn-sm"
           onClick={handleValidate}
           disabled={!script || validating}
-          style={{ borderColor: validation?.valid === false ? 'var(--danger)' : validation?.valid ? 'var(--success)' : undefined }}
+          style={{
+            borderColor: validation?.valid === false
+              ? 'var(--danger)'
+              : validation?.valid
+              ? 'var(--success)'
+              : undefined,
+          }}
+          aria-label="Validate script syntax"
         >
-          {validating ? '⏳ Validating...' : '🔎 Validate Script'}
+          {validating ? '⏳ Validating...' : '🔎 Validate'}
         </button>
+
         {previousScript && (
-          <button className="btn btn-secondary btn-sm" onClick={() => setShowDiff(d => !d)}>
-            {showDiff ? '▲ Hide Diff' : '▼ Show Diff'}
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowDiff(d => !d)}
+            aria-label={showDiff ? 'Hide diff' : 'Show diff'}
+          >
+            {showDiff ? '▲ Hide Diff' : '▼ Diff'}
           </button>
+        )}
+
+        {script && (
+          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+            {lineCount} lines · {sizeLabel}
+          </span>
         )}
       </div>
 
@@ -84,55 +128,37 @@ export default function ScriptOutput({ script, loading }) {
         <div style={{
           background: validation.valid ? 'rgba(76,175,125,0.08)' : 'rgba(224,82,82,0.08)',
           border: `1px solid ${validation.valid ? 'var(--success)' : 'var(--danger)'}`,
-          borderRadius: '8px', padding: '0.75rem 1rem',
-          fontSize: '0.82rem', marginBottom: '0.75rem',
+          borderRadius: '8px',
+          padding: '0.75rem 1rem',
+          fontSize: '0.82rem',
+          marginBottom: '0.75rem',
         }}>
           <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: validation.valid ? 'var(--success)' : 'var(--danger)' }}>
             {validation.valid ? '✅ Script looks good' : '❌ Issues found'}
           </div>
-          {(validation.errors || []).map((e, i) => (
-            <div key={i} style={{ color: 'var(--danger)', marginBottom: '0.2rem' }}>
-              ❌ <strong>{safeStr(e.code)}</strong>: {safeStr(e.message)}
-            </div>
-          ))}
-          {(validation.warnings || []).map((w, i) => (
-            <div key={i} style={{ color: 'var(--warning)', marginBottom: '0.2rem' }}>
-              ⚠️ <strong>{safeStr(w.code)}</strong>: {safeStr(w.message)}
-            </div>
-          ))}
-          {(validation.info || []).map((inf, i) => (
-            <div key={i} style={{ color: 'var(--text-muted)' }}>
-              ℹ️ {safeStr(inf.message)}
-            </div>
-          ))}
+          {(validation.errors   || []).map((e, i) => <div key={i} style={{ color: 'var(--danger)',   marginBottom: '0.2rem' }}>❌ <strong>{safeStr(e.code)}</strong>: {safeStr(e.message)}</div>)}
+          {(validation.warnings || []).map((w, i) => <div key={i} style={{ color: 'var(--warning)',  marginBottom: '0.2rem' }}>⚠️ <strong>{safeStr(w.code)}</strong>: {safeStr(w.message)}</div>)}
+          {(validation.info     || []).map((inf, i) => <div key={i} style={{ color: 'var(--text-muted)' }}>ℹ️ {safeStr(inf.message)}</div>)}
         </div>
       )}
 
-      {loading && (
-        <div style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '12px', padding: '3rem', textAlign: 'center',
-          color: 'var(--text-muted)',
-        }}>⏳ Resolving domains...</div>
-      )}
-
       {!loading && script && (
-        <pre style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '12px', padding: '1.25rem',
-          fontFamily: 'var(--mono)', fontSize: '0.78rem',
-          color: 'var(--text)', overflowX: 'auto',
-          whiteSpace: 'pre', maxHeight: '65vh', overflowY: 'auto',
-          lineHeight: 1.6,
-        }}>{script}</pre>
+        <pre
+          className="script-pre"
+          tabIndex={0}
+          aria-label="Generated RouterOS script"
+          aria-readonly="true"
+        >{script}</pre>
       )}
 
       {!loading && !script && (
         <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '12px', padding: '3rem', textAlign: 'center',
-          color: 'var(--text-muted)', fontSize: '0.9rem',
-        }}>📝 Resolve domains to generate RouterOS script</div>
+          borderRadius: 'var(--radius)', padding: '3rem',
+          textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem',
+        }}>
+          📝 Resolve domains to generate RouterOS script
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import DomainInput    from './components/DomainInput';
@@ -21,27 +21,25 @@ import ApiDocs       from './pages/ApiDocs';
 
 import './App.css';
 
-// ASNs that share infrastructure with other critical services
-// Add new ASNs here — getWarnings() picks them up automatically
+// ─── ASN shared-infrastructure warnings ─────────────────────────────
 const SHARED_ASN_WARNINGS = {
   '15169': {
-    platforms: ['youtube.com', 'google.com', 'googleapis.com', 'googlevideo.com', 'gstatic.com', 'googleusercontent.com'],
-    message: 'AS15169 (Google) — Blocking these IP ranges will also affect Gmail, Drive, Meet, Search, Maps, and Android updates. Consider using DNS + Layer7 blocking instead of IP ranges for YouTube-only blocking.',
+    platforms: ['youtube.com','google.com','googleapis.com','googlevideo.com','gstatic.com','googleusercontent.com'],
+    message: 'AS15169 (Google) — Blocking these IP ranges will also affect Gmail, Drive, Meet, Search, Maps, and Android updates. Consider DNS + Layer7 blocking instead.',
     color: '#f0a500',
   },
   '16509': {
-    platforms: ['amazonaws.com', 'cloudfront.net', 'primevideo.com'],
+    platforms: ['amazonaws.com','cloudfront.net','primevideo.com'],
     message: 'AS16509 (Amazon AWS) — Blocking AWS ranges will break thousands of unrelated websites hosted on AWS, not just Amazon/Prime Video.',
     color: '#f0a500',
   },
   '46489': {
-    platforms: ['twitch.tv', 'epicgames.com', 'twitchsvc.net'],
+    platforms: ['twitch.tv','epicgames.com','twitchsvc.net'],
     message: 'AS46489 (Fastly CDN) — This ASN is shared between Twitch, Epic Games, and many other CDN-hosted sites.',
     color: '#f0a500',
   },
 };
 
-// Build a flat lookup: domain -> { asn, ...warning } for O(1) access
 const DOMAIN_ASN_LOOKUP = {};
 for (const [asn, info] of Object.entries(SHARED_ASN_WARNINGS)) {
   for (const platform of info.platforms) {
@@ -54,9 +52,8 @@ function matchesWarnedDomain(d) {
 }
 
 function getWarnings(domains) {
-  const warnings    = [];
-  const triggeredAsns = new Map(); // asn -> matched domains[]
-
+  const warnings = [];
+  const triggeredAsns = new Map();
   for (const d of domains) {
     const key = matchesWarnedDomain(d);
     if (!key) continue;
@@ -64,18 +61,9 @@ function getWarnings(domains) {
     if (!triggeredAsns.has(asn)) triggeredAsns.set(asn, []);
     triggeredAsns.get(asn).push(d);
   }
-
   for (const [asn, matched] of triggeredAsns) {
     const info = SHARED_ASN_WARNINGS[asn];
-
-    // Collateral-damage warning for every matched ASN
-    warnings.push({
-      type: 'asn',
-      color: info.color,
-      message: info.message,
-    });
-
-    // Duplicate-range warning when multiple domains share the same ASN
+    warnings.push({ type: 'asn', color: info.color, message: info.message });
     if (matched.length > 1) {
       warnings.push({
         type: 'duplicate-asn',
@@ -84,28 +72,21 @@ function getWarnings(domains) {
       });
     }
   }
-
   return warnings;
 }
 
+// ─── Warning banner ──────────────────────────────────────────────────
 function WarningBanner({ warnings }) {
   if (!warnings.length) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+    <div className="warning-stack" role="alert" aria-label="Domain warnings">
       {warnings.map((w, i) => (
-        <div key={i} style={{
-          padding: '0.65rem 0.85rem',
-          borderRadius: '8px',
-          border: `1px solid ${w.color}`,
-          background: `${w.color}18`,
-          fontSize: '0.8rem',
-          lineHeight: 1.5,
-          color: 'var(--text)',
-          display: 'flex',
-          gap: '0.5rem',
-          alignItems: 'flex-start',
-        }}>
-          <span style={{ fontSize: '1rem', marginTop: '1px' }}>{w.type === 'asn' ? '⚠️' : 'ℹ️'}</span>
+        <div
+          key={i}
+          className="warning-item"
+          style={{ border: `1px solid ${w.color}`, background: `${w.color}18`, borderRadius: '8px' }}
+        >
+          <span className="warning-icon">{w.type === 'asn' ? '⚠️' : 'ℹ️'}</span>
           <span>{w.message}</span>
         </div>
       ))}
@@ -113,50 +94,117 @@ function WarningBanner({ warnings }) {
   );
 }
 
+// ─── Limitations notice ──────────────────────────────────────────────
 function LimitationsNotice() {
   return (
-    <div style={{
-      marginTop: '0.75rem',
-      padding: '0.65rem 0.85rem',
-      borderRadius: '8px',
-      border: '1px solid var(--border)',
-      background: 'var(--surface2)',
-      fontSize: '0.76rem',
-      color: 'var(--text-muted)',
-      lineHeight: 1.6,
-    }}>
-      <strong style={{ color: 'var(--text)', display: 'block', marginBottom: '0.3rem' }}>Known limitations</strong>
-      <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+    <div className="limitations-notice">
+      <strong>Known limitations</strong>
+      <ul>
         <li>Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks still apply.</li>
         <li>TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.</li>
         <li>Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.</li>
         <li>IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.</li>
-        <li>Motivated users on mobile data (LTE/5G) are outside this tool’s threat model.</li>
+        <li>Motivated users on mobile data (LTE/5G) are outside this tool's threat model.</li>
       </ul>
     </div>
   );
 }
 
+// ─── Empty state (right panel before first resolve) ──────────────────
+function EmptyState() {
+  return (
+    <div className="empty-state" role="region" aria-label="Getting started">
+      <div className="empty-state-icon">🔒</div>
+      <h3>Generate your RouterOS block script</h3>
+      <p>Enter domains on the left and click <strong>Generate Script</strong> to create a ready-to-paste RouterOS script.</p>
+      <div className="empty-state-steps">
+        <div className="empty-step">
+          <span className="empty-step-num">1</span>
+          <span>Enter domain names, one per line</span>
+        </div>
+        <div className="empty-step">
+          <span className="empty-step-num">2</span>
+          <span>Choose options (RouterOS version, IPv6…)</span>
+        </div>
+        <div className="empty-step">
+          <span className="empty-step-num">3</span>
+          <span>Click <strong>Generate Script</strong> or press <kbd className="kbd">Ctrl+Enter</kbd></span>
+        </div>
+        <div className="empty-step">
+          <span className="empty-step-num">4</span>
+          <span>Copy and paste into your MikroTik terminal</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Progress bar ─────────────────────────────────────────────────────
+function ProgressBar() {
+  return (
+    <div className="progress-bar-wrap" role="progressbar" aria-label="Resolving domains">
+      <div className="progress-bar-fill" />
+    </div>
+  );
+}
+
+// ─── Accordion wrapper ────────────────────────────────────────────────
+function Accordion({ title, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const bodyRef = useRef(null);
+
+  // measure height for smooth animation
+  const [height, setHeight] = useState('auto');
+  useEffect(() => {
+    if (bodyRef.current) setHeight(bodyRef.current.scrollHeight + 'px');
+  }, [children, open]);
+
+  return (
+    <div className="options-card" style={{ paddingBottom: open ? '1.1rem' : '0.1rem' }}>
+      <div
+        className="accordion-header"
+        onClick={() => setOpen(o => !o)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setOpen(o => !o)}
+      >
+        <h3 style={{ marginBottom: 0 }}>{title}</h3>
+        <span className={`accordion-chevron ${open ? 'open' : ''}`} aria-hidden>▼</span>
+      </div>
+      <div
+        ref={bodyRef}
+        className={`accordion-body ${open ? 'expanded' : 'collapsed'}`}
+        style={{ maxHeight: open ? height : '0' }}
+        aria-hidden={!open}
+      >
+        <div style={{ paddingTop: '0.75rem' }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── HomePage ─────────────────────────────────────────────────────────
 function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
 
-  const [listName,    setListName]    = useState('blocked');
-  const [outputMode,  setOutputMode]  = useState('both');
-  const [addFilter,   setAddFilter]   = useState(true);
-  const [addSrcBlock, setAddSrcBlock] = useState(false);
-  const [includeIPv6, setIncludeIPv6] = useState(true);
-  const [addLayer7,   setAddLayer7]   = useState(false);
-  const [routerOS,    setRouterOS]    = useState('v7');
-  const [domainsValue,  setDomainsValue]  = useState('');
-  const [activeTab,     setActiveTab]     = useState('terminal');
+  const [listName,     setListName]     = useState('blocked');
+  const [outputMode,   setOutputMode]   = useState('both');
+  const [addFilter,    setAddFilter]    = useState(true);
+  const [addSrcBlock,  setAddSrcBlock]  = useState(false);
+  const [includeIPv6,  setIncludeIPv6]  = useState(true);
+  const [addLayer7,    setAddLayer7]    = useState(false);
+  const [routerOS,     setRouterOS]     = useState('v7');
+  const [domainsValue, setDomainsValue] = useState('');
+  const [activeTab,    setActiveTab]    = useState('terminal');
   const [activeCategory, setActiveCategory] = useState(null);
 
   const { resolved, script, stats, loading, error, resolve } = useResolver();
 
   const currentOptions = { listName, outputMode, addFilter, addSrcBlock, includeIPv6, addLayer7, routerOS };
-
-  const parsedDomains = domainsValue.split('\n').map(d => d.trim()).filter(Boolean);
-  const warnings = getWarnings(parsedDomains);
+  const parsedDomains  = domainsValue.split('\n').map(d => d.trim()).filter(Boolean);
+  const warnings       = getWarnings(parsedDomains);
+  const hasResults     = resolved.length > 0 || !!script;
 
   const handleResolve = useCallback((domains, category = null) => {
     resolve(domains, { ...currentOptions, category });
@@ -185,6 +233,20 @@ function HomePage() {
     });
   };
 
+  // Keyboard shortcut: Ctrl+Enter → generate
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (parsedDomains.length > 0 && !loading) {
+          handleResolve(parsedDomains);
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [parsedDomains, loading, handleResolve]);
+
   const CATEGORIES = [
     { id: 'ads',     label: '🚦 Ads & Tracking',  color: '#f0a500' },
     { id: 'adult',   label: '🔞 Adult Content',    color: '#e05252' },
@@ -199,21 +261,27 @@ function HomePage() {
 
   return (
     <div className="app">
-      <Toaster position="top-right" toastOptions={{
-        style: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }
-      }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
+          success: { iconTheme: { primary: 'var(--success)', secondary: '#fff' } },
+          error:   { iconTheme: { primary: 'var(--danger)',  secondary: '#fff' } },
+        }}
+      />
 
+      {/* ── Header ── */}
       <header className="app-header">
         <div className="header-inner">
           <div className="logo">
-            <span className="logo-icon">🔒</span>
+            <span className="logo-icon" aria-hidden>🔒</span>
             <div>
               <h1>MikroTik Blocker</h1>
               <p>Block domains via RouterOS address lists</p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div className="header-badges">
+          <div className="header-right">
+            <div className="header-badges" aria-label="Features">
               <span className="badge">RouterOS CLI</span>
               <span className="badge badge-green">DNS Auto-Resolve</span>
               <span className="badge badge-purple">ASN CIDR</span>
@@ -226,7 +294,8 @@ function HomePage() {
       </header>
 
       <main className="app-main">
-        {/* LEFT PANEL */}
+
+        {/* ── LEFT PANEL ── */}
         <div className="left-panel">
           <DomainInput
             onResolve={handleResolve}
@@ -235,65 +304,56 @@ function HomePage() {
             onChange={setDomainsValue}
           />
 
-          {/* Live domain warnings */}
           {warnings.length > 0 && <WarningBanner warnings={warnings} />}
 
           <FileImport onImport={handleFileImport} />
 
-          <div className="options-card" style={{ marginTop: '0.75rem' }}>
-            <h3>📦 Category Blocklists</h3>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+          {/* Category blocklists */}
+          <Accordion title="📦 Category Blocklists" defaultOpen={false}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
               Fetch domain lists from oisd.nl and StevenBlack hosts
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
-                  className="btn btn-secondary"
-                  style={{
-                    borderColor: activeCategory === cat.id ? cat.color : undefined,
-                    color:       activeCategory === cat.id ? cat.color : undefined,
-                    textAlign: 'left',
-                    opacity: loading ? 0.5 : 1,
-                  }}
+                  className={`category-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                  style={activeCategory === cat.id ? { borderColor: cat.color, color: cat.color } : {}}
                   onClick={() => handleCategory(cat.id)}
                   disabled={loading}
+                  aria-pressed={activeCategory === cat.id}
                 >
                   {loading && activeCategory === cat.id ? '⏳ Fetching...' : cat.label}
                 </button>
               ))}
             </div>
-          </div>
+          </Accordion>
 
-          <div className="options-card">
-            <h3>⚙️ Script Options</h3>
+          {/* Script options */}
+          <Accordion title="⚙️ Script Options" defaultOpen={true}>
 
             <div className="option-row">
-              <label>Address List Name</label>
+              <label htmlFor="listNameInput">Address List Name</label>
               <input
+                id="listNameInput"
                 type="text"
                 value={listName}
                 onChange={e => setListName(e.target.value)}
                 placeholder="blocked"
                 className="text-input"
+                aria-label="Address list name"
               />
             </div>
 
             <div className="option-row">
               <label>RouterOS Version</label>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div className="toggle-group" role="group" aria-label="RouterOS version">
                 {['v6', 'v7'].map(v => (
                   <button
                     key={v}
+                    className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
                     onClick={() => setRouterOS(v)}
-                    style={{
-                      padding: '0.3rem 0.9rem', borderRadius: '6px',
-                      border: `1px solid ${routerOS === v ? 'var(--primary)' : 'var(--border)'}`,
-                      background: routerOS === v ? 'var(--primary)' : 'var(--surface2)',
-                      color: routerOS === v ? '#fff' : 'var(--text-muted)',
-                      fontSize: '0.8rem', cursor: 'pointer',
-                      fontWeight: routerOS === v ? 700 : 400,
-                    }}
+                    aria-pressed={routerOS === v}
                   >{v}</button>
                 ))}
               </div>
@@ -304,66 +364,58 @@ function HomePage() {
 
             <div className="option-row">
               <label>Output Mode</label>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <div className="toggle-group" role="group" aria-label="Output mode">
                 {OUTPUT_MODES.map(m => (
                   <button
                     key={m.id}
+                    className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
                     onClick={() => setOutputMode(m.id)}
                     title={m.hint}
-                    style={{
-                      padding: '0.3rem 0.7rem', borderRadius: '6px',
-                      border: `1px solid ${outputMode === m.id ? 'var(--primary)' : 'var(--border)'}`,
-                      background: outputMode === m.id ? 'var(--primary)' : 'var(--surface2)',
-                      color: outputMode === m.id ? '#fff' : 'var(--text-muted)',
-                      fontSize: '0.78rem', cursor: 'pointer',
-                      fontWeight: outputMode === m.id ? 600 : 400,
-                    }}
+                    aria-pressed={outputMode === m.id}
                   >{m.label}</button>
                 ))}
               </div>
             </div>
 
             <div className="option-row">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input type="checkbox" checked={addFilter}   onChange={e => setAddFilter(e.target.checked)} />
+              <label className="checkbox-label">
+                <input type="checkbox" checked={addFilter}   onChange={e => setAddFilter(e.target.checked)} aria-label="Add firewall drop rule" />
                 Add firewall drop rule
               </label>
             </div>
             <div className="option-row">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} />
+              <label className="checkbox-label">
+                <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} aria-label="Also block inbound src" />
                 Also block inbound (src)
               </label>
             </div>
             <div className="option-row">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} />
+              <label className="checkbox-label">
+                <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} aria-label="Include IPv6" />
                 Include IPv6 (AAAA + /ipv6)
               </label>
             </div>
 
-            <div className="option-row" style={{
-              marginTop: '0.5rem', padding: '0.6rem 0.75rem',
-              borderRadius: '8px',
-              background: addLayer7 ? 'rgba(224,82,82,0.08)' : 'transparent',
-              border: `1px solid ${addLayer7 ? '#e05252' : 'var(--border)'}`,
-              transition: 'all 0.2s',
-            }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={addLayer7} onChange={e => setAddLayer7(e.target.checked)} style={{ marginTop: '2px' }} />
+            <div className={`layer7-option ${addLayer7 ? 'active' : ''}`}>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={addLayer7}
+                  onChange={e => setAddLayer7(e.target.checked)}
+                  aria-label="Enable Layer7 Protocol Block"
+                />
                 <div>
-                  <div style={{ fontWeight: 600, color: addLayer7 ? '#e05252' : 'var(--text)', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 600, color: addLayer7 ? 'var(--danger)' : 'var(--text)', fontSize: '0.84rem' }}>
                     🔍 Layer7 Protocol Block
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.4 }}>
-                    Matches HTTP Host header + TLS SNI.
-                    <br />
-                    <span style={{ color: '#f0a500' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
+                  <div className="checkbox-hint">
+                    Matches HTTP Host header + TLS SNI.<br />
+                    <span style={{ color: 'var(--warning)' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
                   </div>
                 </div>
               </label>
             </div>
-          </div>
+          </Accordion>
 
           <PresetManager
             domains={parsedDomains}
@@ -374,26 +426,26 @@ function HomePage() {
           <SchedulerPanel onResolve={handleResolve} />
         </div>
 
-        {/* RIGHT PANEL */}
+        {/* ── RIGHT PANEL ── */}
         <div className="right-panel">
-          {error && <div className="error-banner">⚠️ {error}</div>}
-          {stats && <StatsBar stats={stats} />}
 
+          {loading && <ProgressBar />}
+          {error   && <div className="error-banner" role="alert">⚠️ {error}</div>}
+          {stats   && <StatsBar stats={stats} />}
+
+          {/* Resolved domain chips */}
           {resolved.length > 0 && (
-            <div className="resolved-summary">
+            <div className="resolved-summary" aria-live="polite">
               <h3>📌 Resolved Results</h3>
               <div className="domain-chips">
                 {resolved.map(r => (
                   <div key={r.domain} className={`domain-chip ${r.error ? 'chip-error' : 'chip-ok'}`}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong>{r.domain}</strong>
+                    <div className="chip-header">
+                      <span className="chip-domain">{r.domain}</span>
                       {r.method && (
-                        <span style={{
-                          fontSize: '0.68rem',
-                          background: r.method === 'ASN+DNS' ? 'rgba(91,141,239,0.15)' : 'rgba(76,175,125,0.15)',
-                          color: r.method === 'ASN+DNS' ? 'var(--primary)' : 'var(--success)',
-                          padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600,
-                        }}>{r.method}</span>
+                        <span className={`chip-method ${r.method === 'ASN+DNS' ? 'chip-method-asn' : 'chip-method-dns'}`}>
+                          {r.method}
+                        </span>
                       )}
                     </div>
                     {r.error
@@ -414,15 +466,41 @@ function HomePage() {
             </div>
           )}
 
-          <div className="tab-bar">
-            <button className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`} onClick={() => setActiveTab('terminal')}>🖥️ Terminal</button>
-            <button className={`tab-btn ${activeTab === 'script'   ? 'active' : ''}`} onClick={() => setActiveTab('script')}>📜 Script (.rsc)</button>
-          </div>
+          {/* Tab bar — only show after first result */}
+          {hasResults && (
+            <div className="tab-bar" role="tablist" aria-label="Output format">
+              <button
+                className={`tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
+                onClick={() => setActiveTab('terminal')}
+                role="tab"
+                aria-selected={activeTab === 'terminal'}
+              >🖥️ Terminal (interactive)</button>
+              <button
+                className={`tab-btn ${activeTab === 'script' ? 'active' : ''}`}
+                onClick={() => setActiveTab('script')}
+                role="tab"
+                aria-selected={activeTab === 'script'}
+              >📜 Script (.rsc file)</button>
+            </div>
+          )}
 
-          {activeTab === 'terminal' && <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} addLayer7={addLayer7} routerOS={routerOS} />}
-          {activeTab === 'script'   && <ScriptOutput script={script} loading={loading} />}
+          {/* Output panels */}
+          {!hasResults && !loading && <EmptyState />}
+          {loading && (
+            <div className="skeleton-block">
+              {[100,85,70,90,60].map((w, i) => (
+                <div key={i} className="skeleton skeleton-line" style={{ width: `${w}%` }} />
+              ))}
+            </div>
+          )}
 
-          {/* Limitations notice — always visible */}
+          {hasResults && activeTab === 'terminal' && (
+            <ManualTerminal resolved={resolved} listName={listName} includeIPv6={includeIPv6} addLayer7={addLayer7} routerOS={routerOS} />
+          )}
+          {hasResults && activeTab === 'script' && (
+            <ScriptOutput script={script} loading={loading} />
+          )}
+
           <LimitationsNotice />
         </div>
       </main>

@@ -100,7 +100,7 @@ function LimitationsNotice() {
     <div className="limitations-notice">
       <strong>Known limitations</strong>
       <ul>
-        <li>Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks still apply.</li>
+        <li>Clients using DoH (DNS-over-HTTPS) bypass DNS-based rules — IP range blocks + Layer7 SNI still apply.</li>
         <li>TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.</li>
         <li>Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.</li>
         <li>IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.</li>
@@ -153,7 +153,6 @@ function Accordion({ title, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyRef = useRef(null);
 
-  // measure height for smooth animation
   const [height, setHeight] = useState('auto');
   useEffect(() => {
     if (bodyRef.current) setHeight(bodyRef.current.scrollHeight + 'px');
@@ -358,7 +357,9 @@ function HomePage() {
                 ))}
               </div>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                {routerOS === 'v7' ? '/ip/firewall (slash path)' : '/ip firewall (space path)'}
+                {routerOS === 'v7'
+                  ? '/ip/firewall (slash — v7 also accepts /ip firewall space syntax)'
+                  : '/ip firewall (space syntax — legacy RouterOS v6)'}
               </span>
             </div>
 

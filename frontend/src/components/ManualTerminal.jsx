@@ -76,7 +76,7 @@ export default function ManualTerminal({ resolved, listName = 'blocked', include
       layer7FilterLines.push(
         `/ip firewall filter`,
         `:if ([:len [find chain=forward layer7-protocol=${ruleName} action=drop]] = 0) do={`,
-        `  add chain=forward layer7-protocol=${ruleName} action=drop comment="L7-block ${r.domain}" place-before=0`,
+        `  add chain=forward layer7-protocol=${ruleName} action=drop comment="L7-block ${r.domain}"`,
         `}`,
       );
     }
@@ -131,15 +131,18 @@ export default function ManualTerminal({ resolved, listName = 'blocked', include
   }
 
   // ── Step: Firewall filter ─────────────────────────────────────
+  // NOTE: No place-before — rules are appended to chain end.
+  // Ensure your established/related accept rules are already
+  // positioned above this in the forward chain.
   const filterLines = [
     `/ip firewall filter`,
     `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
-    `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}" place-before=0`,
+    `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName}"`,
     `}`,
     ...(includeIPv6 ? [
       `/ipv6 firewall filter`,
       `:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`,
-      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} IPv6" place-before=0`,
+      `  add chain=forward dst-address-list=${listName} action=drop comment="Block ${listName} IPv6"`,
       `}`,
     ] : []),
   ];
@@ -168,7 +171,7 @@ export default function ManualTerminal({ resolved, listName = 'blocked', include
             }}>HTTP Host + TLS SNI</span>
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-            Blocks domain by name — works even when IPs rotate. Runs before IP-based rules.
+            Blocks domain by name — works even when IPs rotate. Rules appended to chain; verify position after import.
           </p>
           <CopyBlock lines={layer7AddLines} label="Layer7 patterns" />
           {layer7FilterLines.length > 0 && (
@@ -188,7 +191,7 @@ export default function ManualTerminal({ resolved, listName = 'blocked', include
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
           <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>Step {stepNum++} — IPv4 address list</h4>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            {validResolved.reduce((a, r) => a + (r.cidrs?.length || 0), 0)} CIDR + 
+            {validResolved.reduce((a, r) => a + (r.cidrs?.length || 0), 0)} CIDR +
             {validResolved.reduce((a, r) => a + (r.ips?.length   || 0), 0)} IPs
           </span>
         </div>
@@ -208,7 +211,12 @@ export default function ManualTerminal({ resolved, listName = 'blocked', include
 
       {/* Firewall rules */}
       <div style={STEP_STYLE}>
-        <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '0.4rem' }}>Step {stepNum++} — Firewall drop rules</h4>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <h4 style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>Step {stepNum++} — Firewall drop rules</h4>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Rules appended — verify chain position
+          </span>
+        </div>
         <CopyBlock lines={filterLines} label="Firewall rules" />
       </div>
 

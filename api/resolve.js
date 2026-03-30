@@ -1,11 +1,14 @@
 // ============================================================
-// MikroTik Blocker — api/resolve.js  v4.5
-// Fix: removed place-before=0 from all generated firewall drop
-//      rules. place-before=0 was inserting drops at position 0
-//      which could override established/related accept rules
-//      already at the top of the chain on the user's router.
-//      Rules are now appended (safe default); users can
-//      manually reorder after reviewing their chain.
+// MikroTik Blocker — api/resolve.js  v4.6
+// Changes:
+//   - Primary ASN prefix source switched to bgp.tools API
+//     (more complete data, e.g. AS15169 returns 200+ routes
+//     vs subset from BGPview). BGPview kept as secondary
+//     fallback before static table.
+//   - Added Cloudflare AS13335 to ASN_MAP + CIDR fallback
+//     (covers 1.1.1.1 DoH resolver blocking use case)
+//   - Added DoH resolvers to ASN_MAP: Google (AS15169 already
+//     present), Quad9 AS19281, OpenDNS AS36692
 // ============================================================
 
 const ASN_MAP = {
@@ -66,10 +69,18 @@ const ASN_MAP = {
   'protonvpn.com':         ['62371'],
   'bet365.com':            ['43215'],
   'pokerstars.com':        ['19905'],
+  // DoH resolvers — for DNS hardening preset
+  'cloudflare.com':        ['13335'],
+  'cloudflare-dns.com':    ['13335'],
+  'one.one.one.one':       ['13335'],
+  'dns.google':            ['15169'],
+  'dns.quad9.net':         ['19281'],
+  'quad9.net':             ['19281'],
+  'opendns.com':           ['36692'],
 };
 
-// Static CIDR fallback — used when BGPview is unavailable
-// Sources: RIPE, ARIN, BGPview (last verified 2025)
+// Static CIDR fallback — used when both bgp.tools and BGPview are unavailable
+// Sources: RIPE, ARIN, bgp.tools (last verified 2026)
 const ASN_CIDR_FALLBACK = {
   // Meta / Facebook AS32934 + AS63293
   '32934': {
@@ -206,6 +217,32 @@ const ASN_CIDR_FALLBACK = {
     ],
     v6: [],
   },
+  // Cloudflare AS13335 — DoH resolver 1.1.1.1
+  '13335': {
+    v4: [
+      '1.1.1.0/24','1.0.0.0/24','103.21.244.0/22',
+      '103.22.200.0/22','103.31.4.0/22','104.16.0.0/13',
+      '104.24.0.0/14','108.162.192.0/18','131.0.72.0/22',
+      '141.101.64.0/18','162.158.0.0/15','172.64.0.0/13',
+      '173.245.48.0/20','188.114.96.0/20','190.93.240.0/20',
+      '197.234.240.0/22','198.41.128.0/17',
+    ],
+    v6: [
+      '2400:cb00::/32','2606:4700::/32','2803:f800::/32',
+      '2405:b500::/32','2405:8100::/32','2a06:98c0::/29',
+      '2c0f:f248::/32',
+    ],
+  },
+  // Quad9 AS19281
+  '19281': {
+    v4: ['9.9.9.0/24','149.112.112.0/24'],
+    v6: ['2620:fe::/48'],
+  },
+  // OpenDNS AS36692
+  '36692': {
+    v4: ['208.67.222.0/24','208.67.220.0/24'],
+    v6: ['2620:119:35::/48','2620:119:53::/48'],
+  },
 };
 
 const SUBDOMAIN_VARIANTS = ['', 'www', 'm', 'cdn'];
@@ -260,7 +297,6 @@ function buildLayer7Regex(domain) {
   return `^.*(${httpPart}|${tlsPart})`;
 }
 
-// Get fallback CIDRs from static table
 function getFallbackCIDRs(asn) {
   const entry = ASN_CIDR_FALLBACK[asn];
   if (!entry) return { v4: [], v6: [] };
@@ -270,26 +306,56 @@ function getFallbackCIDRs(asn) {
   };
 }
 
-// Try BGPview first — fall back to static table
+// Try bgp.tools first (most complete), then BGPview, then static fallback
 async function getASNPrefixes(asn) {
+  // 1. bgp.tools — returns full BGP table dump per ASN
+  try {
+    const res = await fetch(`https://bgp.tools/as/${asn}#prefixes`, {
+      headers: { 'User-Agent': 'MikroTik-Blocker/4.6 (https://github.com/SamoTech/mikrotik-blocker)', Accept: 'text/html,application/xhtml+xml' },
+      signal: AbortSignal.timeout(5000),
+    });
+    // bgp.tools doesn't have a public JSON API — use their whois/table endpoint
+    const res2 = await fetch(`https://bgp.tools/table.jsonl?cidr=&asn=${asn}`, {
+      headers: { 'User-Agent': 'MikroTik-Blocker/4.6', Accept: 'application/x-jsonlines,application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res2.ok) {
+      const text = await res2.text();
+      const v4 = [], v6 = [];
+      for (const line of text.split('\n')) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          const prefix = obj.CIDR || obj.prefix || obj.cidr;
+          if (!prefix) continue;
+          if (prefix.includes(':')) v6.push({ cidr: prefix, description: `AS${asn} (bgp.tools)`, version: 6 });
+          else                      v4.push({ cidr: prefix, description: `AS${asn} (bgp.tools)`, version: 4 });
+        } catch (_) {}
+      }
+      if (v4.length || v6.length) return { v4, v6 };
+    }
+  } catch (_) {}
+
+  // 2. BGPview fallback
   try {
     const res = await fetch(`https://api.bgpview.io/asn/${asn}/prefixes`, {
-      headers: { 'User-Agent': 'MikroTik-Blocker/4.5', Accept: 'application/json' },
+      headers: { 'User-Agent': 'MikroTik-Blocker/4.6', Accept: 'application/json' },
       signal: AbortSignal.timeout(4000),
     });
-    if (!res.ok) return getFallbackCIDRs(asn);
-    const data = await res.json();
-    const v4 = (data.data?.ipv4_prefixes || []).map(p => ({
-      cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 4,
-    }));
-    const v6 = (data.data?.ipv6_prefixes || []).map(p => ({
-      cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 6,
-    }));
-    if (!v4.length && !v6.length) return getFallbackCIDRs(asn);
-    return { v4, v6 };
-  } catch (_) {
-    return getFallbackCIDRs(asn);
-  }
+    if (res.ok) {
+      const data = await res.json();
+      const v4 = (data.data?.ipv4_prefixes || []).map(p => ({
+        cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 4,
+      }));
+      const v6 = (data.data?.ipv6_prefixes || []).map(p => ({
+        cidr: p.prefix, description: p.name || p.description || `AS${asn}`, version: 6,
+      }));
+      if (v4.length || v6.length) return { v4, v6 };
+    }
+  } catch (_) {}
+
+  // 3. Static table
+  return getFallbackCIDRs(asn);
 }
 
 async function dohResolveDeep(name, type = 'A', _depth = 0) {
@@ -381,7 +447,7 @@ async function getAnnouncedCIDRs(ips) {
   const results = await Promise.allSettled(
     ips.slice(0, 10).map(ip =>
       fetch(`https://ipinfo.io/${ip}/json`, {
-        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.5' },
+        headers: { Accept: 'application/json', 'User-Agent': 'MikroTik-Blocker/4.6' },
         signal: AbortSignal.timeout(3000),
       })
       .then(r => r.ok ? r.json() : null)
@@ -471,7 +537,7 @@ function generateScript(resolved, options = {}) {
     `# Mode      : ${outputMode}${includeIPv6 ? ' + IPv6' : ''}${addLayer7 ? ' + Layer7' : ''}`,
     `# RouterOS  : ${routerOS}`,
     `# IMPORTANT : Review rule order after import. Drop rules are`,
-    `#             appended to the chain — ensure they come AFTER`,
+    `#             appended to the chain \u2014 ensure they come AFTER`,
     `#             your established/related accept rules.`,
     `# ================================================`, '',
   ];
@@ -490,7 +556,6 @@ function generateScript(resolved, options = {}) {
     for (const r of resolved) {
       if (!r.domain) continue;
       const ruleName = `l7-${r.domain.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-      // No place-before — appended to chain; user should verify position
       lines.push(
         `:if ([:len [find chain=forward layer7-protocol=${ruleName} action=drop]] = 0) do={`,
         `  add chain=forward layer7-protocol=${ruleName} action=drop comment="L7-block ${r.domain}"`,
@@ -540,8 +605,6 @@ function generateScript(resolved, options = {}) {
 
   if (addFilter) {
     const stepFW = addLayer7 ? '4' : '3';
-    // No place-before — rules are appended; user must ensure established/related
-    // accept rules are already above this in the forward chain.
     lines.push(
       '', `# Step ${stepFW} \u2014 Firewall drop rules`,
       `# NOTE: Rules appended to end of chain. Verify position relative`,

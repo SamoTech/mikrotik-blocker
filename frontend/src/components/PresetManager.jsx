@@ -5,11 +5,18 @@ const STORAGE_KEY = 'mtblocker_presets';
 // ─── Built-in factory presets (read-only, always shown first) ───────
 const BUILTIN_PRESETS = [
   {
+    id: 'dns-hardening',
+    name: '🛡️ DNS Hardening',
+    description: 'Block DoH resolvers (Cloudflare 1.1.1.1, Google 8.8.8.8, Quad9) + Layer7 SNI — forces clients to use your router DNS',
+    domains: ['cloudflare.com', 'cloudflare-dns.com', 'dns.google', 'quad9.net', 'opendns.com'],
+    options: { addLayer7: true, includeIPv6: true, outputMode: 'both', addFilter: true, listName: 'doh-block' },
+  },
+  {
     id: 'cloudflare-doh',
     name: '☁️ Cloudflare (DoH Block)',
     description: 'Blocks Cloudflare 1.1.1.1 DoH resolver + AS13335 ranges',
-    domains: ['cloudflare.com', '1.1.1.1', 'one.one.one.one', 'cloudflare-dns.com'],
-    options: { addLayer7: true, includeIPv6: true, outputMode: 'both', addFilter: true },
+    domains: ['cloudflare.com', 'cloudflare-dns.com'],
+    options: { addLayer7: true, includeIPv6: true, outputMode: 'both', addFilter: true, listName: 'doh-cloudflare' },
   },
   {
     id: 'complete-block',
@@ -46,7 +53,7 @@ export default function PresetManager({ domains, options, onLoad }) {
   const [presets, setPresets]     = useState(loadPresets);
   const [newName, setNewName]     = useState('');
   const [showSaved, setShowSaved] = useState(false);
-  const [tab, setTab]             = useState('builtin'); // 'builtin' | 'saved'
+  const [tab, setTab]             = useState('builtin');
 
   useEffect(() => { savePresets(presets); }, [presets]);
 
@@ -117,7 +124,6 @@ export default function PresetManager({ domains, options, onLoad }) {
       {/* ── SAVED PRESETS ── */}
       {tab === 'saved' && (
         <>
-          {/* Save current */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <input
               className="text-input"

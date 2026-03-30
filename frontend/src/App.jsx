@@ -21,7 +21,7 @@ import ApiDocs       from './pages/ApiDocs';
 
 import './App.css';
 
-// ─── ASN shared-infrastructure warnings ─────────────────────────────
+// ─── ASN shared-infrastructure warnings ────────────────────────────────────
 const SHARED_ASN_WARNINGS = {
   '15169': {
     platforms: ['youtube.com','google.com','googleapis.com','googlevideo.com','gstatic.com','googleusercontent.com'],
@@ -75,7 +75,7 @@ function getWarnings(domains) {
   return warnings;
 }
 
-// ─── Warning banner ──────────────────────────────────────────────────
+// ─── Warning banner ───────────────────────────────────────────────
 function WarningBanner({ warnings }) {
   if (!warnings.length) return null;
   return (
@@ -110,21 +110,21 @@ function LimitationsNotice() {
   );
 }
 
-// ─── Empty state (right panel before first resolve) ──────────────────
+// ─── Empty state (output area before first resolve) ───────────────────────
 function EmptyState() {
   return (
     <div className="empty-state" role="region" aria-label="Getting started">
       <div className="empty-state-icon">🔒</div>
       <h3>Generate your RouterOS block script</h3>
-      <p>Enter domains on the left and click <strong>Generate Script</strong> to create a ready-to-paste RouterOS script.</p>
+      <p>Enter domains above and click <strong>Generate Script</strong> to create a ready-to-paste RouterOS script.</p>
       <div className="empty-state-steps">
         <div className="empty-step">
           <span className="empty-step-num">1</span>
-          <span>Enter domain names, one per line</span>
+          <span>Enter domain names in the Domain Input box</span>
         </div>
         <div className="empty-step">
           <span className="empty-step-num">2</span>
-          <span>Choose options (RouterOS version, IPv6…)</span>
+          <span>Configure options in Script Options</span>
         </div>
         <div className="empty-step">
           <span className="empty-step-num">3</span>
@@ -139,7 +139,7 @@ function EmptyState() {
   );
 }
 
-// ─── Progress bar ─────────────────────────────────────────────────────
+// ─── Progress bar ──────────────────────────────────────────────────────
 function ProgressBar() {
   return (
     <div className="progress-bar-wrap" role="progressbar" aria-label="Resolving domains">
@@ -183,7 +183,7 @@ function Accordion({ title, defaultOpen = true, children }) {
   );
 }
 
-// ─── HomePage ─────────────────────────────────────────────────────────
+// ─── HomePage ──────────────────────────────────────────────────────────────
 function HomePage() {
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -272,7 +272,8 @@ function HomePage() {
       {/* ── Header ── */}
       <header className="app-header">
         <div className="header-inner">
-          <div className="logo">
+          {/* Logo — intentionally NOT a link; cursor:default set in CSS */}
+          <div className="logo" role="banner" aria-label="MikroTik Blocker">
             <span className="logo-icon" aria-hidden>🔒</span>
             <div>
               <h1>MikroTik Blocker</h1>
@@ -294,142 +295,148 @@ function HomePage() {
 
       <main className="app-main">
 
-        {/* ── LEFT PANEL ── */}
-        <div className="left-panel">
-          <DomainInput
-            onResolve={handleResolve}
-            loading={loading}
-            value={domainsValue}
-            onChange={setDomainsValue}
-          />
+        {/* ── TOP: config-zone (Domain Input left | Script Options right) ── */}
+        <div className="config-zone">
 
-          {warnings.length > 0 && <WarningBanner warnings={warnings} />}
+          {/* LEFT COL: Domain Input + File Import + Category Blocklists + Presets + Scheduler */}
+          <div className="input-col">
+            <DomainInput
+              onResolve={handleResolve}
+              loading={loading}
+              value={domainsValue}
+              onChange={setDomainsValue}
+            />
 
-          <FileImport onImport={handleFileImport} />
+            {warnings.length > 0 && <WarningBanner warnings={warnings} />}
 
-          {/* Category blocklists */}
-          <Accordion title="📦 Category Blocklists" defaultOpen={false}>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-              Fetch domain lists from oisd.nl and StevenBlack hosts
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  className={`category-btn ${activeCategory === cat.id ? 'active' : ''}`}
-                  style={activeCategory === cat.id ? { borderColor: cat.color, color: cat.color } : {}}
-                  onClick={() => handleCategory(cat.id)}
-                  disabled={loading}
-                  aria-pressed={activeCategory === cat.id}
-                >
-                  {loading && activeCategory === cat.id ? '⏳ Fetching...' : cat.label}
-                </button>
-              ))}
-            </div>
-          </Accordion>
+            <FileImport onImport={handleFileImport} />
 
-          {/* Script options */}
-          <Accordion title="⚙️ Script Options" defaultOpen={true}>
-
-            <div className="option-row">
-              <label htmlFor="listNameInput">Address List Name</label>
-              <input
-                id="listNameInput"
-                type="text"
-                value={listName}
-                onChange={e => setListName(e.target.value)}
-                placeholder="blocked"
-                className="text-input"
-                aria-label="Address list name"
-              />
-            </div>
-
-            <div className="option-row">
-              <label>RouterOS Version</label>
-              <div className="toggle-group" role="group" aria-label="RouterOS version">
-                {['v6', 'v7'].map(v => (
+            {/* Category blocklists */}
+            <Accordion title="📦 Category Blocklists" defaultOpen={false}>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
+                Fetch domain lists from oisd.nl and StevenBlack hosts
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {CATEGORIES.map(cat => (
                   <button
-                    key={v}
-                    className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
-                    onClick={() => setRouterOS(v)}
-                    aria-pressed={routerOS === v}
-                  >{v}</button>
+                    key={cat.id}
+                    className={`category-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                    style={activeCategory === cat.id ? { borderColor: cat.color, color: cat.color } : {}}
+                    onClick={() => handleCategory(cat.id)}
+                    disabled={loading}
+                    aria-pressed={activeCategory === cat.id}
+                  >
+                    {loading && activeCategory === cat.id ? '⏳ Fetching...' : cat.label}
+                  </button>
                 ))}
               </div>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                {routerOS === 'v7'
-                  ? '/ip/firewall (slash — v7 also accepts /ip firewall space syntax)'
-                  : '/ip firewall (space syntax — legacy RouterOS v6)'}
-              </span>
-            </div>
+            </Accordion>
 
-            <div className="option-row">
-              <label>Output Mode</label>
-              <div className="toggle-group" role="group" aria-label="Output mode">
-                {OUTPUT_MODES.map(m => (
-                  <button
-                    key={m.id}
-                    className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
-                    onClick={() => setOutputMode(m.id)}
-                    title={m.hint}
-                    aria-pressed={outputMode === m.id}
-                  >{m.label}</button>
-                ))}
-              </div>
-            </div>
+            <PresetManager
+              domains={parsedDomains}
+              options={currentOptions}
+              onLoad={handleLoadPreset}
+            />
 
-            <div className="option-row">
-              <label className="checkbox-label">
-                <input type="checkbox" checked={addFilter}   onChange={e => setAddFilter(e.target.checked)} aria-label="Add firewall drop rule" />
-                Add firewall drop rule
-              </label>
-            </div>
-            <div className="option-row">
-              <label className="checkbox-label">
-                <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} aria-label="Also block inbound src" />
-                Also block inbound (src)
-              </label>
-            </div>
-            <div className="option-row">
-              <label className="checkbox-label">
-                <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} aria-label="Include IPv6" />
-                Include IPv6 (AAAA + /ipv6)
-              </label>
-            </div>
+            <SchedulerPanel onResolve={handleResolve} />
+          </div>
 
-            <div className={`layer7-option ${addLayer7 ? 'active' : ''}`}>
-              <label className="checkbox-label">
+          {/* RIGHT COL: Script Options only */}
+          <div className="options-col">
+            <Accordion title="⚙️ Script Options" defaultOpen={true}>
+
+              <div className="option-row">
+                <label htmlFor="listNameInput">Address List Name</label>
                 <input
-                  type="checkbox"
-                  checked={addLayer7}
-                  onChange={e => setAddLayer7(e.target.checked)}
-                  aria-label="Enable Layer7 Protocol Block"
+                  id="listNameInput"
+                  type="text"
+                  value={listName}
+                  onChange={e => setListName(e.target.value)}
+                  placeholder="blocked"
+                  className="text-input"
+                  aria-label="Address list name"
                 />
-                <div>
-                  <div style={{ fontWeight: 600, color: addLayer7 ? 'var(--danger)' : 'var(--text)', fontSize: '0.84rem' }}>
-                    🔍 Layer7 Protocol Block
-                  </div>
-                  <div className="checkbox-hint">
-                    Matches HTTP Host header + TLS SNI.<br />
-                    <span style={{ color: 'var(--warning)' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
-                  </div>
+              </div>
+
+              <div className="option-row">
+                <label>RouterOS Version</label>
+                <div className="toggle-group" role="group" aria-label="RouterOS version">
+                  {['v6', 'v7'].map(v => (
+                    <button
+                      key={v}
+                      className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
+                      onClick={() => setRouterOS(v)}
+                      aria-pressed={routerOS === v}
+                    >{v}</button>
+                  ))}
                 </div>
-              </label>
-            </div>
-          </Accordion>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  {routerOS === 'v7'
+                    ? '/ip/firewall (slash — v7 also accepts /ip firewall space syntax)'
+                    : '/ip firewall (space syntax — legacy RouterOS v6)'}
+                </span>
+              </div>
 
-          <PresetManager
-            domains={parsedDomains}
-            options={currentOptions}
-            onLoad={handleLoadPreset}
-          />
+              <div className="option-row">
+                <label>Output Mode</label>
+                <div className="toggle-group" role="group" aria-label="Output mode">
+                  {OUTPUT_MODES.map(m => (
+                    <button
+                      key={m.id}
+                      className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
+                      onClick={() => setOutputMode(m.id)}
+                      title={m.hint}
+                      aria-pressed={outputMode === m.id}
+                    >{m.label}</button>
+                  ))}
+                </div>
+              </div>
 
-          <SchedulerPanel onResolve={handleResolve} />
+              <div className="option-row">
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={addFilter}   onChange={e => setAddFilter(e.target.checked)} aria-label="Add firewall drop rule" />
+                  Add firewall drop rule
+                </label>
+              </div>
+              <div className="option-row">
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} aria-label="Also block inbound src" />
+                  Also block inbound (src)
+                </label>
+              </div>
+              <div className="option-row">
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} aria-label="Include IPv6" />
+                  Include IPv6 (AAAA + /ipv6)
+                </label>
+              </div>
+
+              <div className={`layer7-option ${addLayer7 ? 'active' : ''}`}>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={addLayer7}
+                    onChange={e => setAddLayer7(e.target.checked)}
+                    aria-label="Enable Layer7 Protocol Block"
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, color: addLayer7 ? 'var(--danger)' : 'var(--text)', fontSize: '0.84rem' }}>
+                      🔍 Layer7 Protocol Block
+                    </div>
+                    <div className="checkbox-hint">
+                      Matches HTTP Host header + TLS SNI.<br />
+                      <span style={{ color: 'var(--warning)' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </Accordion>
+          </div>
         </div>
+        {/* end config-zone */}
 
-        {/* ── RIGHT PANEL ── */}
-        <div className="right-panel">
-
+        {/* ── BOTTOM: full-width output zone ── */}
+        <div className="output-zone">
           {loading && <ProgressBar />}
           {error   && <div className="error-banner" role="alert">⚠️ {error}</div>}
           {stats   && <StatsBar stats={stats} />}
@@ -504,6 +511,8 @@ function HomePage() {
 
           <LimitationsNotice />
         </div>
+        {/* end output-zone */}
+
       </main>
 
       <Footer />

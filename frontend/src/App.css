@@ -22,9 +22,9 @@
   justify-content: space-between;
   gap: 1rem;
 }
-.logo { display: flex; align-items: center; gap: 0.85rem; }
+.logo { display: flex; align-items: center; gap: 0.85rem; cursor: default; user-select: none; }
 .logo-icon { font-size: 2.2rem; line-height: 1; }
-.logo h1 { font-size: 1.35rem; font-weight: 700; color: var(--primary); margin: 0; }
+.logo h1 { font-size: 1.35rem; font-weight: 700; color: var(--primary); margin: 0; cursor: default; }
 .logo p  { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
 .header-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .header-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
@@ -46,18 +46,48 @@
 .badge-red    { border-color: var(--danger);  color: var(--danger); }
 
 /* ─── Layout ──────────────────────────────── */
+/*
+  New layout (desktop):
+  ┌──────────────────────────────────────────┐
+  │  config-zone  (Domain Input | Options)  │
+  ├──────────────────────────────────────────┤
+  │  output-zone  (full width)              │
+  └──────────────────────────────────────────┘
+*/
 .app-main {
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.75rem 2rem;
-  display: grid;
-  grid-template-columns: 370px 1fr;
-  gap: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   width: 100%;
   flex: 1;
+}
+
+/* Top zone: Domain Input (left) + Script Options (right) side-by-side */
+.config-zone {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
   align-items: start;
 }
 
+/* Left column inside config-zone */
+.input-col  { display: flex; flex-direction: column; gap: 0; }
+
+/* Right column inside config-zone */
+.options-col { display: flex; flex-direction: column; gap: 0; }
+
+/* Bottom zone: full-width output */
+.output-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: fadeIn 0.3s ease;
+}
+
+/* ── Legacy panel refs (keep for any remaining uses) ── */
 .left-panel  { display: flex; flex-direction: column; gap: 0; }
 .right-panel { display: flex; flex-direction: column; gap: 0; animation: fadeIn 0.3s ease; }
 
@@ -459,16 +489,18 @@
 
 /* ─── Responsive ─────────────────────────── */
 @media (max-width: 1100px) {
-  .app-main { grid-template-columns: 340px 1fr; gap: 1.25rem; }
+  .config-zone { grid-template-columns: 1fr 1fr; gap: 1rem; }
 }
 @media (max-width: 900px) {
-  .app-main { grid-template-columns: 1fr; padding: 1rem; }
+  .app-main { padding: 1rem; gap: 1rem; }
+  .config-zone { grid-template-columns: 1fr; }
   .app-header { padding: 0.75rem 1rem; }
   .header-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .header-badges { gap: 0.3rem; }
 }
 @media (max-width: 600px) {
   .app-main { padding: 0.75rem; gap: 0.75rem; }
+  .config-zone { grid-template-columns: 1fr; gap: 0.75rem; }
   .logo h1 { font-size: 1.1rem; }
   .tab-bar { gap: 0.3rem; }
   .tab-btn { padding: 0.4rem 0.7rem; font-size: 0.78rem; }

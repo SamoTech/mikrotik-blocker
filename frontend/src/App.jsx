@@ -22,6 +22,7 @@ import ApiDocs       from './pages/ApiDocs';
 import './App.css';
 
 // ASNs that share infrastructure with other critical services
+// Add new ASNs here — getWarnings() picks them up automatically
 const SHARED_ASN_WARNINGS = {
   '15169': {
     platforms: ['youtube.com', 'google.com', 'googleapis.com', 'googlevideo.com', 'gstatic.com', 'googleusercontent.com'],
@@ -34,36 +35,54 @@ const SHARED_ASN_WARNINGS = {
     color: '#f0a500',
   },
   '46489': {
-    platforms: ['twitch.tv', 'epicgames.com'],
+    platforms: ['twitch.tv', 'epicgames.com', 'twitchsvc.net'],
     message: 'AS46489 (Fastly CDN) — This ASN is shared between Twitch, Epic Games, and many other CDN-hosted sites.',
     color: '#f0a500',
   },
 };
 
-// Domains that share the same ASN — warn if entered together
-const GOOGLE_DOMAINS = ['youtube.com','google.com','googleapis.com','googlevideo.com','gstatic.com','googleusercontent.com'];
+// Build a flat lookup: domain -> { asn, ...warning } for O(1) access
+const DOMAIN_ASN_LOOKUP = {};
+for (const [asn, info] of Object.entries(SHARED_ASN_WARNINGS)) {
+  for (const platform of info.platforms) {
+    DOMAIN_ASN_LOOKUP[platform] = { asn, ...info };
+  }
+}
+
+function matchesWarnedDomain(d) {
+  return Object.keys(DOMAIN_ASN_LOOKUP).find(p => d === p || d.endsWith('.' + p));
+}
 
 function getWarnings(domains) {
-  const warnings = [];
+  const warnings    = [];
+  const triggeredAsns = new Map(); // asn -> matched domains[]
 
-  // Google/AS15169 warning
-  const hasGoogle = domains.some(d => GOOGLE_DOMAINS.some(g => d === g || d.endsWith('.' + g)));
-  if (hasGoogle) {
-    warnings.push({
-      type: 'asn',
-      color: '#f0a500',
-      message: 'AS15169 (Google): Blocking these IP ranges will also affect Gmail, Drive, Meet, Search, and Android updates. For YouTube-only blocking, use DNS + Layer7 instead of IP ranges.',
-    });
+  for (const d of domains) {
+    const key = matchesWarnedDomain(d);
+    if (!key) continue;
+    const { asn } = DOMAIN_ASN_LOOKUP[key];
+    if (!triggeredAsns.has(asn)) triggeredAsns.set(asn, []);
+    triggeredAsns.get(asn).push(d);
   }
 
-  // Shared-ASN warning (multiple Google domains together)
-  const googleMatches = domains.filter(d => GOOGLE_DOMAINS.some(g => d === g || d.endsWith('.' + g)));
-  if (googleMatches.length > 1) {
+  for (const [asn, matched] of triggeredAsns) {
+    const info = SHARED_ASN_WARNINGS[asn];
+
+    // Collateral-damage warning for every matched ASN
     warnings.push({
-      type: 'duplicate-asn',
-      color: '#5b8def',
-      message: `These domains share the same ASN (AS15169): ${googleMatches.join(', ')} — the generated script will contain duplicate IP ranges. Consider keeping only one.`,
+      type: 'asn',
+      color: info.color,
+      message: info.message,
     });
+
+    // Duplicate-range warning when multiple domains share the same ASN
+    if (matched.length > 1) {
+      warnings.push({
+        type: 'duplicate-asn',
+        color: '#5b8def',
+        message: `These domains share AS${asn}: ${matched.join(', ')} — the script will contain duplicate IP ranges. Consider keeping only one.`,
+      });
+    }
   }
 
   return warnings;
@@ -112,7 +131,7 @@ function LimitationsNotice() {
         <li>TLS 1.3 ESNI/ECH makes Layer7 SNI matching unreliable on modern browsers.</li>
         <li>Certificate-pinned apps (WhatsApp, Instagram) cannot be inspected via NGFW/MiTM.</li>
         <li>IP ranges rotate over time — re-run the tool periodically or use the Auto-Refresh scheduler.</li>
-        <li>Motivated users on mobile data (LTE/5G) are outside this tool's threat model.</li>
+        <li>Motivated users on mobile data (LTE/5G) are outside this tool’s threat model.</li>
       </ul>
     </div>
   );

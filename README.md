@@ -17,7 +17,7 @@ A production-ready web app that auto-resolves domains into RouterOS-ready block 
 - 🔍 **Deep IP resolution** — 7-layer engine covering ASN ranges, CNAME chains, PTR sweep, announced CIDRs
 - 📊 **ASN CIDR blocking** — fetches all announced prefixes via BGPView for 50+ known platforms
 - 🟣 **IPv6 support** — resolves AAAA records + IPv6 CIDR ranges + `/ipv6 firewall` rules
-- 🔍 **Layer7 protocol blocking** — matches HTTP `Host` header and TLS SNI — blocks by domain name regardless of IP changes
+- 🔍 **Layer7 protocol blocking** — matches HTTP `Host` header and TLS SNI
 - 📦 **Category blocklists** — Ads, Adult, Malware via oisd.nl (30-min cache)
 - ⚙️ **Script options** — output mode (Both / CIDR only / IPs only), custom list name, inbound src block
 - 📋 **RouterOS script generator** — ready-to-paste `.rsc` for RouterOS 6.x and 7.x
@@ -25,6 +25,79 @@ A production-ready web app that auto-resolves domains into RouterOS-ready block 
 - 🖥️ **Manual terminal steps** — copy individual command blocks step by step
 - 🔄 **Auto-refresh scheduler** — re-resolve and refresh every X hours via Vercel Cron
 - 📈 **Stats bar** — 9 live metrics after every resolve
+- 🎨 **Dark / Light theme** — system-aware with manual toggle
+- ♿ **Accessible UI** — full keyboard navigation, ARIA roles, focus indicators
+- ⌨️ **Keyboard shortcut** — `Ctrl+Enter` to generate script instantly
+
+---
+
+## 🎨 UI / UX
+
+The interface is designed for both network engineers and first-time MikroTik users.
+
+### Getting started
+
+When you first open the app, the right panel shows an **onboarding guide** with four numbered steps:
+
+1. Enter domain names, one per line
+2. Choose options (RouterOS version, IPv6…)
+3. Click **Generate Script** or press `Ctrl+Enter`
+4. Copy and paste into your MikroTik terminal
+
+### Left panel — inputs & options
+
+| Section | Behaviour |
+|---|---|
+| **Domain Input** | Multi-line textarea; inline ASN collision warnings appear as you type |
+| **File Import** | Drag-and-drop or click to import a `.txt` / `.csv` domain list |
+| **Category Blocklists** | Collapsible accordion — fetch Ads / Adult / Malware lists from oisd.nl |
+| **Script Options** | Collapsible accordion — RouterOS version, output mode, checkboxes, Layer7 toggle |
+| **Preset Manager** | Save and reload domain+option sets by name |
+| **Scheduler** | Set a recurring auto-refresh interval |
+
+### Right panel — output
+
+| State | What you see |
+|---|---|
+| **Empty (first visit)** | Onboarding empty-state with step guide |
+| **Loading** | Shimmer progress bar at the top + skeleton lines |
+| **Resolved** | Domain chips with method badge (`ASN+DNS` / `DNS`), CIDR/IP counts |
+| **Script ready** | Tab bar appears: **Terminal (interactive)** · **Script (.rsc file)** |
+
+### Script toolbar
+
+| Button | Behaviour |
+|---|---|
+| 📋 **Copy** | Copies to clipboard; button turns green `✓ Copied!` for 2 s |
+| ⬇️ **Download .rsc** | Saves file + shows toast |
+| 🔎 **Validate** | Calls `/api/validate` and shows errors / warnings inline |
+| ▼ **Diff** | Shows line-by-line diff vs previous script (appears after re-resolve) |
+| `{n} lines · {size}` | Live script size indicator in the toolbar |
+
+### Keyboard & accessibility
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Enter` / `⌘+Enter` | Generate script (when domains are present) |
+| `Tab` / `Shift+Tab` | Full keyboard navigation across all controls |
+| `Enter` / `Space` | Toggle accordions |
+
+- All interactive elements have `aria-label`, `aria-pressed`, `aria-selected`, and `role` attributes.
+- Focus rings are visible on all focusable elements (`:focus-visible`).
+- Live regions (`aria-live="polite"`) announce resolved results to screen readers.
+
+### Responsive breakpoints
+
+| Viewport | Layout |
+|---|---|
+| ≥ 1100 px | Two-column grid (340 px left + flex right) |
+| 900 – 1100 px | Two-column grid (340 px left + flex right), reduced gap |
+| 600 – 900 px | Single-column stack, header collapses |
+| < 600 px | Compact single-column, badges hidden, reduced font sizes |
+
+### Theme
+
+Toggled via the button in the header. Both dark and light themes use the same CSS variable system — all components adapt automatically.
 
 ---
 
@@ -134,7 +207,8 @@ Layer7 blocking works at the **packet payload level** — it inspects the first 
 ```
 mikrotik-blocker/
 ├── api/
-│   ├── resolve.js              ← POST /api/resolve  (main engine v4.1)
+│   ├── resolve.js              ← POST /api/resolve  (main engine v4.5)
+│   ├── validate.js             ← POST /api/validate
 │   ├── health.js               ← GET  /api/health
 │   ├── mikrotik/push.js        ← POST /api/mikrotik/push
 │   └── package.json
@@ -142,28 +216,37 @@ mikrotik-blocker/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── DomainInput.jsx
-│   │   │   ├── ScriptOutput.jsx
+│   │   │   ├── ScriptOutput.jsx      ← copy animation, line count, byte size
 │   │   │   ├── ManualTerminal.jsx
 │   │   │   ├── SchedulerPanel.jsx
 │   │   │   ├── StatsBar.jsx
 │   │   │   ├── Footer.jsx
+│   │   │   ├── PresetManager.jsx
+│   │   │   ├── FileImport.jsx
+│   │   │   ├── ScriptDiff.jsx
+│   │   │   ├── ThemeToggle.jsx
+│   │   │   ├── ErrorBoundary.jsx
 │   │   │   └── PageShell.jsx
 │   │   ├── pages/
+│   │   │   ├── ApiDocs.jsx
 │   │   │   ├── SponsorsPage.jsx
+│   │   │   ├── ChangelogPage.jsx
 │   │   │   ├── LicensePage.jsx
 │   │   │   ├── PrivacyPage.jsx
-│   │   │   ├── TermsPage.jsx
-│   │   │   └── ChangelogPage.jsx
-│   │   ├── hooks/useResolver.js
-│   │   ├── App.jsx
+│   │   │   └── TermsPage.jsx
+│   │   ├── hooks/
+│   │   │   └── useResolver.js
+│   │   ├── App.jsx             ← Accordion, EmptyState, ProgressBar, keyboard shortcut
+│   │   ├── App.css             ← all styles extracted from JSX; 3 responsive breakpoints
+│   │   ├── index.css           ← CSS variables, animations, scrollbar, focus ring
 │   │   └── main.jsx
 │   ├── vite.config.js
 │   └── package.json
-├── backend/                    ← local Express dev server (optional)
+├── backend/                    ← self-hosted Express alternative (not used on Vercel)
 ├── .github/
-│   └── FUNDING.yml             ← GitHub Sponsors button
+│   └── FUNDING.yml
 ├── vercel.json
-├── LICENSE                     ← MIT
+├── LICENSE
 ├── CHANGELOG.md
 ├── SPONSORS.md
 └── docker-compose.yml
@@ -215,7 +298,7 @@ mikrotik-blocker/
       "cidrsV6":        [{ "cidr": "2a03:2880::/32",  "description": "FACEBOOK" }],
       "ips":            ["157.240.241.35", "157.240.20.35"],
       "ipsV6":          ["2a03:2880:f003:c07:face:b00c::167"],
-      "layer7Regex":    "^.*(Host: [^\r]*facebook\.com|...)",
+      "layer7Regex":    "^.*(Host: [^\\r]*facebook\\.com|...)",
       "totalAddresses": 12,
       "error":          null
     }
@@ -235,6 +318,27 @@ mikrotik-blocker/
 }
 ```
 
+### `POST /api/validate`
+
+Validates a generated script for syntax issues.
+
+**Request body:**
+
+```json
+{ "script": "# RouterOS script content..." }
+```
+
+**Response:**
+
+```json
+{
+  "valid":    true,
+  "errors":   [],
+  "warnings": [{ "code": "LARGE_SCRIPT", "message": "Script has 800+ lines..." }],
+  "info":     [{ "message": "42 address-list entries found" }]
+}
+```
+
 ---
 
 ## 📜 Example Script Output
@@ -242,7 +346,7 @@ mikrotik-blocker/
 ```rsc
 # ================================================
 # MikroTik Blocker — Auto-Generated Script
-# Date    : 2026-03-28T17:00:00.000Z
+# Date    : 2026-03-30T20:00:00.000Z
 # Domains : facebook.com
 # List    : blocked
 # Mode    : both + IPv6 + Layer7
@@ -252,12 +356,6 @@ mikrotik-blocker/
 /ip firewall layer7-protocol
 :if ([:len [find name=l7-facebook_com]] = 0) do={
   add name=l7-facebook_com regexp="^.*(Host: [^\r]*facebook\.com|...)"
-}
-
-# Step 1b — Apply Layer7 forward drop rules
-/ip firewall filter
-:if ([:len [find chain=forward layer7-protocol=l7-facebook_com action=drop]] = 0) do={
-  add chain=forward layer7-protocol=l7-facebook_com action=drop comment="L7-block facebook.com" place-before=0
 }
 
 # Step 2 — Remove existing entries
@@ -284,7 +382,6 @@ add list=blocked address=2a03:2880::/32 comment="facebook.com-range6"
 
 # Step 5 — Verify
 /ip firewall address-list print where list=blocked
-/ip firewall layer7-protocol print
 /ipv6 firewall address-list print where list=blocked
 ```
 
@@ -324,7 +421,16 @@ add list=blocked address=2a03:2880::/32 comment="facebook.com-range6"
 npx vercel --prod
 ```
 
-No environment variables required — the app is fully stateless.
+No environment variables required for the core app — it is fully stateless.
+
+> **Optional:** To enable direct router push (`/api/mikrotik/push`), set these in Vercel Environment Variables:
+>
+> | Variable | Description |
+> |---|---|
+> | `MT_HOST` | MikroTik router IP or hostname |
+> | `MT_USER` | RouterOS API username |
+> | `MT_PASS` | RouterOS API password |
+> | `MT_PORT` | RouterOS API port (default `8728`) |
 
 ---
 
@@ -333,16 +439,16 @@ No environment variables required — the app is fully stateless.
 **Prerequisites:** Node.js >= 18
 
 ```bash
-# Vercel Dev (recommended)
+# Vercel Dev (recommended — runs both frontend and API together)
 npm install -g vercel
 vercel dev
-# http://localhost:3000
+# → http://localhost:3000
 
-# Or separate servers
-cd backend && npm install && npm run dev
-cd frontend && npm install && npm run dev  # http://localhost:5173
+# Frontend only
+cd frontend && npm install && npm run dev
+# → http://localhost:5173
 
-# Docker
+# Docker (self-hosted Express backend)
 docker-compose up --build
 ```
 
@@ -353,7 +459,7 @@ docker-compose up --build
 | Constraint | Value |
 |---|---|
 | Max domains per request | 50 |
-| Vercel function timeout | 30s (`resolve`), 15s (`push`), 5s (`health`) |
+| Vercel function timeout | 30 s (`resolve`), 15 s (`push`), 5 s (`health`) |
 | Blocklist cache TTL | 30 minutes (in-memory, resets on cold start) |
 | Layer7 regex size limit | 2 KB per pattern (RouterOS limit) |
 | Runtime | Node.js 18+ (native `fetch`, no extra packages) |

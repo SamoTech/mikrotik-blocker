@@ -107,14 +107,12 @@ const LIMITATIONS = [
   { icon: '🔐', short: 'TLS 1.3 ECH',           detail: 'ESNI/ECH hides SNI from Layer7 matching on modern browsers.' },
   { icon: '📱', short: 'Cert-pinned apps',      detail: 'WhatsApp, Instagram etc. bypass NGFW/MiTM inspection.' },
   { icon: '🔄', short: 'IP ranges rotate',      detail: 'Re-run periodically or enable the Auto-Refresh scheduler.' },
-  { icon: '📶', short: 'Mobile LTE/5G',         detail: 'Users on cellular data are outside this tool\'s scope.' },
+  { icon: '📶', short: 'Mobile LTE/5G',         detail: "Motivated users on cellular data are outside this tool's scope." },
 ];
 
 function InfoPanel() {
   return (
     <div className="info-panel" role="region" aria-label="Quick start and known limitations">
-
-      {/* ── LEFT: Quick Start ── */}
       <div className="info-panel-col">
         <div className="ip-section-label">
           <span className="ip-section-dot ip-section-dot--blue" />
@@ -132,11 +130,7 @@ function InfoPanel() {
           ))}
         </div>
       </div>
-
-      {/* ── DIVIDER ── */}
       <div className="info-panel-divider" aria-hidden />
-
-      {/* ── RIGHT: Limitations ── */}
       <div className="info-panel-col">
         <div className="ip-section-label">
           <span className="ip-section-dot ip-section-dot--orange" />
@@ -155,7 +149,108 @@ function InfoPanel() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
 
+// ─── Category Blocklists ──────────────────────────────────────────────────
+const BLOCKLIST_CATEGORIES = [
+  {
+    id: 'ads',
+    emoji: '🚦',
+    label: 'Ads & Tracking',
+    description: 'Block ad networks, analytics trackers, telemetry endpoints, and third-party data brokers.',
+    color: '#f0a500',
+    colorBg: 'rgba(240,165,0,0.08)',
+    colorBorder: 'rgba(240,165,0,0.35)',
+    domains: '~257k',
+    sources: ['oisd.nl', 'StevenBlack'],
+    tags: ['Ads', 'Telemetry', 'Analytics'],
+  },
+  {
+    id: 'adult',
+    emoji: '🔞',
+    label: 'Adult Content',
+    description: 'Block adult, explicit, and NSFW domains. Suitable for family networks and school environments.',
+    color: '#e05252',
+    colorBg: 'rgba(224,82,82,0.08)',
+    colorBorder: 'rgba(224,82,82,0.35)',
+    domains: '~111k',
+    sources: ['oisd.nl'],
+    tags: ['NSFW', 'Adult', 'Explicit'],
+  },
+  {
+    id: 'malware',
+    emoji: '☠️',
+    label: 'Malware & Phishing',
+    description: 'Block known malware C2 servers, phishing domains, ransomware drops, and exploit kits.',
+    color: '#9b59b6',
+    colorBg: 'rgba(155,89,182,0.08)',
+    colorBorder: 'rgba(155,89,182,0.35)',
+    domains: '~85k',
+    sources: ['oisd.nl', 'StevenBlack'],
+    tags: ['Malware', 'Phishing', 'C2'],
+  },
+];
+
+function CategoryBlocklists({ onCategory, activeCategory, loading }) {
+  return (
+    <div className="options-card">
+      <div className="cb-header">
+        <div>
+          <h3 style={{ marginBottom: '0.15rem' }}>📦 Category Blocklists</h3>
+          <p className="cb-subtitle">Fetch curated domain lists from <strong>oisd.nl</strong> and <strong>StevenBlack</strong> — ready to block in one click.</p>
+        </div>
+      </div>
+      <div className="cb-grid">
+        {BLOCKLIST_CATEGORIES.map(cat => {
+          const isActive  = activeCategory === cat.id;
+          const isFetching = loading && isActive;
+          return (
+            <button
+              key={cat.id}
+              className={`cb-card ${isActive ? 'cb-card--active' : ''}`}
+              style={isActive ? {
+                borderColor: cat.colorBorder,
+                background: cat.colorBg,
+              } : {}}
+              onClick={() => onCategory(cat.id)}
+              disabled={loading}
+              aria-pressed={isActive}
+            >
+              {/* top row */}
+              <div className="cb-card-top">
+                <span className="cb-card-emoji">{cat.emoji}</span>
+                <div className="cb-card-meta">
+                  <span className="cb-card-label" style={isActive ? { color: cat.color } : {}}>{cat.label}</span>
+                  <span className="cb-card-domains">{cat.domains} domains</span>
+                </div>
+                {isFetching
+                  ? <span className="cb-card-spinner" aria-label="Loading" />
+                  : isActive
+                    ? <span className="cb-card-check" style={{ color: cat.color }}>✓</span>
+                    : null
+                }
+              </div>
+              {/* description */}
+              <p className="cb-card-desc">{cat.description}</p>
+              {/* footer */}
+              <div className="cb-card-footer">
+                <div className="cb-card-tags">
+                  {cat.tags.map(t => (
+                    <span key={t} className="cb-tag" style={isActive ? { borderColor: cat.colorBorder, color: cat.color, background: cat.colorBg } : {}}>{t}</span>
+                  ))}
+                </div>
+                <div className="cb-card-sources">
+                  {cat.sources.map(s => (
+                    <span key={s} className="cb-source">{s}</span>
+                  ))}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -263,12 +358,6 @@ function HomePage() {
     return () => window.removeEventListener('keydown', handler);
   }, [parsedDomains, loading, handleResolve]);
 
-  const CATEGORIES = [
-    { id: 'ads',     label: '🚦 Ads & Tracking',  color: '#f0a500' },
-    { id: 'adult',   label: '🔞 Adult Content',    color: '#e05252' },
-    { id: 'malware', label: '☠️ Malware/Phishing', color: '#9b59b6' },
-  ];
-
   const OUTPUT_MODES = [
     { id: 'both',      label: '◑ Both',      hint: 'CIDR + IPs' },
     { id: 'cidr-only', label: '📊 CIDR Only', hint: 'ASN ranges only' },
@@ -328,25 +417,12 @@ function HomePage() {
 
             <FileImport onImport={handleFileImport} />
 
-            <Accordion title="📦 Category Blocklists" defaultOpen={false}>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-                Fetch domain lists from oisd.nl and StevenBlack hosts
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat.id}
-                    className={`category-btn ${activeCategory === cat.id ? 'active' : ''}`}
-                    style={activeCategory === cat.id ? { borderColor: cat.color, color: cat.color } : {}}
-                    onClick={() => handleCategory(cat.id)}
-                    disabled={loading}
-                    aria-pressed={activeCategory === cat.id}
-                  >
-                    {loading && activeCategory === cat.id ? '⏳ Fetching...' : cat.label}
-                  </button>
-                ))}
-              </div>
-            </Accordion>
+            {/* ── Category Blocklists ── */}
+            <CategoryBlocklists
+              onCategory={handleCategory}
+              activeCategory={activeCategory}
+              loading={loading}
+            />
 
             <PresetManager
               domains={parsedDomains}

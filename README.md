@@ -1,5 +1,7 @@
 # 🔒 MikroTik Blocker
 
+[![MikroTik Blocker](https://mikrotik-blocker.vercel.app/og-image.png)](https://mikrotik-blocker.vercel.app)
+
 A production-ready web app that auto-resolves domains into RouterOS-ready block scripts for MikroTik routers. Supports ASN CIDR ranges, deep DNS resolution, IPv6, and Layer7 protocol matching.
 
 **Live:** [mikrotik-blocker.vercel.app](https://mikrotik-blocker.vercel.app)
@@ -240,12 +242,16 @@ mikrotik-blocker/
 │   │   ├── App.css             ← all styles extracted from JSX; 3 responsive breakpoints
 │   │   ├── index.css           ← CSS variables, animations, scrollbar, focus ring
 │   │   └── main.jsx
+│   ├── public/
+│   │   ├── og-image.png
+│   │   ├── sitemap.xml
+│   │   └── robots.txt
+│   ├── vercel.json
 │   ├── vite.config.js
 │   └── package.json
 ├── backend/                    ← self-hosted Express alternative (not used on Vercel)
 ├── .github/
 │   └── FUNDING.yml
-├── vercel.json
 ├── LICENSE
 ├── CHANGELOG.md
 ├── SPONSORS.md

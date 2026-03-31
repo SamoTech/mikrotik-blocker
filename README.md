@@ -1,6 +1,6 @@
 # 🔒 MikroTik Blocker
 
-[![MikroTik Blocker](https://mikrotik-blocker.vercel.app/og-image.png)](https://mikrotik-blocker.vercel.app)
+[![MikroTik Blocker](https://raw.githubusercontent.com/SamoTech/mikrotik-blocker/main/frontend/public/og-image.png)](https://mikrotik-blocker.vercel.app)
 
 A production-ready web app that auto-resolves domains into RouterOS-ready block scripts for MikroTik routers. Supports ASN CIDR ranges, deep DNS resolution, IPv6, and Layer7 protocol matching.
 

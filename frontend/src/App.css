@@ -56,12 +56,32 @@
   width: 100%;
   flex: 1;
 }
+
+/*
+  Desktop layout (>900px):
+    [ cz-domain  ] [ cz-options ]
+    [ cz-extras  ] [ cz-options ]
+
+  Mobile layout (≤900px):
+    [ cz-domain  ]
+    [ cz-options ]
+    [ cz-extras  ]
+*/
 .config-zone {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "domain  options"
+    "extras  options";
   gap: 1.5rem;
   align-items: start;
 }
+.cz-domain  { grid-area: domain;  display: flex; flex-direction: column; gap: 0; }
+.cz-options { grid-area: options; display: flex; flex-direction: column; gap: 0; }
+.cz-extras  { grid-area: extras;  display: flex; flex-direction: column; gap: 0; }
+
+/* keep old class names working in case any child components reference them */
 .input-col   { display: flex; flex-direction: column; gap: 0; }
 .options-col { display: flex; flex-direction: column; gap: 0; }
 .output-zone { display: flex; flex-direction: column; gap: 0; animation: fadeIn 0.3s ease; }
@@ -451,11 +471,11 @@
   .config-zone {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "input"
-      "options";
+      "domain"
+      "options"
+      "extras";
+    gap: 0.75rem;
   }
-  .input-col   { grid-area: input; }
-  .options-col { grid-area: options; }
   .info-panel  { grid-template-columns: 1fr; }
   .info-panel-divider { width: 100%; height: 1px; margin: 0.65rem 0; }
   .info-panel-col { padding: 0; }
@@ -463,12 +483,9 @@
   .app-header  { padding: 0.75rem 1rem; }
   .header-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .header-badges { gap: 0.3rem; }
-  /* Script Options accordion collapsed by default on mobile to save space */
-  .options-col .options-card { margin-bottom: 0; }
 }
 @media (max-width: 600px) {
   .app-main    { padding: 0.75rem; gap: 0.75rem; }
-  .config-zone { gap: 0.75rem; }
   .logo h1     { font-size: 1.1rem; }
   .tab-bar     { gap: 0.3rem; }
   .tab-btn     { padding: 0.4rem 0.7rem; font-size: 0.78rem; }

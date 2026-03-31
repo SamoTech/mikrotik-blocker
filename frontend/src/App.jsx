@@ -243,6 +243,78 @@ function HomePage() {
     { id: 'ips-only',  label: '🔵 IPs Only',  hint: 'DNS resolved IPs' },
   ];
 
+  const scriptOptionsPanel = (
+    <Accordion title="⚙️ Script Options" defaultOpen={true}>
+      <div className="option-row">
+        <label htmlFor="listNameInput">Address List Name</label>
+        <input id="listNameInput" type="text" value={listName}
+          onChange={e => setListName(e.target.value)}
+          placeholder="blocked" className="text-input" aria-label="Address list name" />
+      </div>
+
+      <div className="option-row">
+        <label>RouterOS Version</label>
+        <div className="toggle-group" role="group" aria-label="RouterOS version">
+          {['v6', 'v7'].map(v => (
+            <button key={v} className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
+              onClick={() => setRouterOS(v)} aria-pressed={routerOS === v}>{v}</button>
+          ))}
+        </div>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          {routerOS === 'v7'
+            ? '/ip/firewall (slash — v7 also accepts /ip firewall space syntax)'
+            : '/ip firewall (space syntax — legacy RouterOS v6)'}
+        </span>
+      </div>
+
+      <div className="option-row">
+        <label>Output Mode</label>
+        <div className="toggle-group" role="group" aria-label="Output mode">
+          {OUTPUT_MODES.map(m => (
+            <button key={m.id} className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
+              onClick={() => setOutputMode(m.id)} title={m.hint} aria-pressed={outputMode === m.id}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="option-row">
+        <label className="checkbox-label">
+          <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} />
+          Add firewall drop rule
+        </label>
+      </div>
+      <div className="option-row">
+        <label className="checkbox-label">
+          <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} />
+          Also block inbound (src)
+        </label>
+      </div>
+      <div className="option-row">
+        <label className="checkbox-label">
+          <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} />
+          Include IPv6 (AAAA + /ipv6)
+        </label>
+      </div>
+
+      <div className={`layer7-option ${addLayer7 ? 'active' : ''}`}>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={addLayer7} onChange={e => setAddLayer7(e.target.checked)} />
+          <div>
+            <div style={{ fontWeight: 600, color: addLayer7 ? 'var(--danger)' : 'var(--text)', fontSize: '0.84rem' }}>
+              🔍 Layer7 Protocol Block
+            </div>
+            <div className="checkbox-hint">
+              Matches HTTP Host header + TLS SNI.<br />
+              <span style={{ color: 'var(--warning)' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
+            </div>
+          </div>
+        </label>
+      </div>
+    </Accordion>
+  );
+
   return (
     <div className="app">
       <Toaster position="top-right" toastOptions={{
@@ -277,84 +349,20 @@ function HomePage() {
         <InfoPanel />
 
         <div className="config-zone">
-          <div className="input-col">
+          {/* DOM order: domain → options → extras (desktop: left col = domain+extras, right col = options) */}
+          <div className="cz-domain">  
             <DomainInput onResolve={handleResolve} loading={loading} value={domainsValue} onChange={setDomainsValue} />
             {warnings.length > 0 && <WarningBanner warnings={warnings} />}
+          </div>
+
+          <div className="cz-options">
+            {scriptOptionsPanel}
+          </div>
+
+          <div className="cz-extras">
             <FileImport onImport={handleFileImport} />
             <PresetManager domains={parsedDomains} options={currentOptions} onLoad={handleLoadPreset} />
             <SchedulerPanel onResolve={handleResolve} />
-          </div>
-
-          <div className="options-col">
-            <Accordion title="⚙️ Script Options" defaultOpen={true}>
-              <div className="option-row">
-                <label htmlFor="listNameInput">Address List Name</label>
-                <input id="listNameInput" type="text" value={listName}
-                  onChange={e => setListName(e.target.value)}
-                  placeholder="blocked" className="text-input" aria-label="Address list name" />
-              </div>
-
-              <div className="option-row">
-                <label>RouterOS Version</label>
-                <div className="toggle-group" role="group" aria-label="RouterOS version">
-                  {['v6', 'v7'].map(v => (
-                    <button key={v} className={`toggle-btn ${routerOS === v ? 'active' : ''}`}
-                      onClick={() => setRouterOS(v)} aria-pressed={routerOS === v}>{v}</button>
-                  ))}
-                </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {routerOS === 'v7'
-                    ? '/ip/firewall (slash — v7 also accepts /ip firewall space syntax)'
-                    : '/ip firewall (space syntax — legacy RouterOS v6)'}
-                </span>
-              </div>
-
-              <div className="option-row">
-                <label>Output Mode</label>
-                <div className="toggle-group" role="group" aria-label="Output mode">
-                  {OUTPUT_MODES.map(m => (
-                    <button key={m.id} className={`toggle-btn ${outputMode === m.id ? 'active' : ''}`}
-                      onClick={() => setOutputMode(m.id)} title={m.hint} aria-pressed={outputMode === m.id}>
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="option-row">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={addFilter} onChange={e => setAddFilter(e.target.checked)} />
-                  Add firewall drop rule
-                </label>
-              </div>
-              <div className="option-row">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={addSrcBlock} onChange={e => setAddSrcBlock(e.target.checked)} />
-                  Also block inbound (src)
-                </label>
-              </div>
-              <div className="option-row">
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={includeIPv6} onChange={e => setIncludeIPv6(e.target.checked)} />
-                  Include IPv6 (AAAA + /ipv6)
-                </label>
-              </div>
-
-              <div className={`layer7-option ${addLayer7 ? 'active' : ''}`}>
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={addLayer7} onChange={e => setAddLayer7(e.target.checked)} />
-                  <div>
-                    <div style={{ fontWeight: 600, color: addLayer7 ? 'var(--danger)' : 'var(--text)', fontSize: '0.84rem' }}>
-                      🔍 Layer7 Protocol Block
-                    </div>
-                    <div className="checkbox-hint">
-                      Matches HTTP Host header + TLS SNI.<br />
-                      <span style={{ color: 'var(--warning)' }}>⚠️ High CPU on large traffic — edge/border router only.</span>
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </Accordion>
           </div>
         </div>
 

@@ -4,9 +4,8 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "cd frontend && npm install && cd ../api && npm install",
   "functions": {
-    "api/resolve.js":       { "maxDuration": 30 },
-    "api/health.js":        { "maxDuration": 5  },
-    "api/mikrotik/push.js": { "maxDuration": 15 }
+    "api/resolve.js": { "maxDuration": 30 },
+    "api/health.js":  { "maxDuration": 5  }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },

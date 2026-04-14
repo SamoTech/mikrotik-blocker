@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" aria-label="MikroTik Blocker logo" fill="none">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00c853"/>
+      <stop offset="100%" stop-color="#69f0ae"/>
+    </linearGradient>
+    <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6d00"/>
+      <stop offset="100%" stop-color="#ffab40"/>
+    </linearGradient>
+  </defs>
+  <!-- Background tile -->
+  <rect width="64" height="64" rx="14" fill="#070e0a"/>
+  <!-- Router body -->
+  <rect x="10" y="30" width="44" height="22" rx="5" stroke="url(#lg)" stroke-width="2"/>
+  <!-- Antenna left -->
+  <line x1="18" y1="30" x2="13" y2="14" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Antenna right -->
+  <line x1="46" y1="30" x2="51" y2="14" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/>
+  <!-- LEDs -->
+  <circle cx="19" cy="41" r="3" fill="#00c853"/>
+  <circle cx="29" cy="41" r="3" fill="#00c853" opacity="0.5"/>
+  <!-- Shield block -->
+  <path d="M42 33 L48 36 L48 45 L42 48 L36 45 L36 36 Z" stroke="url(#lg2)" stroke-width="1.8"/>
+  <line x1="42" y1="38" x2="42" y2="43" stroke="url(#lg2)" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="42" cy="46" r="1.5" fill="url(#lg2)"/>
+</svg>

@@ -1,0 +1,7 @@
+Recipe smoke test checklist
+
+1. policy.rsc contains IPv4 resolver targets.
+2. policy.rsc contains UDP/53 and TCP/53 enforcement.
+3. Every generated rule carries the recipe marker.
+4. README explicitly states that resolver IP blocking is not equivalent to DoH/DoT control.
+5. Rollback is documented before deployment.

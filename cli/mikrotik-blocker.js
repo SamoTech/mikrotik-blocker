@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { analyze, formatReport } = require('../tools/firewall-doctor');
 const { parse } = require('../tools/routeros-parser');
+const { normalize } = require('../tools/routeros-semantic');
 const { validate } = require('../tools/validate-manifest');
 const { simulate } = require('../tools/policy-simulator');
 
@@ -12,7 +13,12 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 function usage() {
-  console.log(`MikroTik Configuration Manager CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  parse <router.rsc> [--json]      Parse export into normalized configuration\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
+  console.log(`MikroTik Configuration Manager CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  parse <router.rsc> [--json]      Parse raw RouterOS export\n  model <router.rsc> [--json]      Build semantic configuration model\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
+}
+
+function readRouter(file) {
+  if (!file || !fs.existsSync(file)) { console.error('RouterOS export file not found.'); process.exit(2); }
+  return fs.readFileSync(file, 'utf8');
 }
 
 function recipeDirs() {
@@ -24,17 +30,19 @@ function recipeDirs() {
 if (!command || command === 'help' || command === '--help') { usage(); process.exit(0); }
 
 if (command === 'parse') {
-  const file = args[1];
-  if (!file || !fs.existsSync(file)) { console.error('RouterOS export file not found.'); process.exit(2); }
-  const result = parse(fs.readFileSync(file, 'utf8'));
+  const result = parse(readRouter(args[1]));
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(result.diagnostics.some(d => d.severity === 'error') ? 1 : 0);
+}
+
+if (command === 'model') {
+  const result = normalize(parse(readRouter(args[1])));
   console.log(JSON.stringify(result, null, 2));
   process.exit(result.diagnostics.some(d => d.severity === 'error') ? 1 : 0);
 }
 
 if (command === 'inspect' || command === 'validate') {
-  const file = args[1];
-  if (!file || !fs.existsSync(file)) { console.error('RouterOS export file not found.'); process.exit(2); }
-  const result = analyze(fs.readFileSync(file, 'utf8'));
+  const result = analyze(readRouter(args[1]));
   console.log(args.includes('--json') ? JSON.stringify(result, null, 2) : formatReport(result));
   if (command === 'validate' && (result.summary.high || result.summary.critical)) process.exit(1);
   process.exit(0);

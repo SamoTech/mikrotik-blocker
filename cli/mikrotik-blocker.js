@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { analyze, formatReport } = require('../tools/firewall-doctor');
+const { parse } = require('../tools/routeros-parser');
 const { validate } = require('../tools/validate-manifest');
 const { simulate } = require('../tools/policy-simulator');
 
@@ -11,7 +12,7 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 function usage() {
-  console.log(`MikroTik Blocker CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
+  console.log(`MikroTik Configuration Manager CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  parse <router.rsc> [--json]      Parse export into normalized configuration\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
 }
 
 function recipeDirs() {
@@ -21,6 +22,14 @@ function recipeDirs() {
 }
 
 if (!command || command === 'help' || command === '--help') { usage(); process.exit(0); }
+
+if (command === 'parse') {
+  const file = args[1];
+  if (!file || !fs.existsSync(file)) { console.error('RouterOS export file not found.'); process.exit(2); }
+  const result = parse(fs.readFileSync(file, 'utf8'));
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(result.diagnostics.some(d => d.severity === 'error') ? 1 : 0);
+}
 
 if (command === 'inspect' || command === 'validate') {
   const file = args[1];

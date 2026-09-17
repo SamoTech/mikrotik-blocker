@@ -23,45 +23,40 @@ function generateScript(resolved, options = {}) {
     `# Marker: ${marker}`,
     '# REVIEW BEFORE APPLYING. Export/backup the router first.',
     '',
-    '# IPv4: remove previous generated entries',
+    '# Remove previous generated IPv4 entries',
+    `/ip firewall address-list remove [find list=${listName} comment~"^${marker} "]`,
+    '',
+    '# IPv4: populate address list',
+    '/ip firewall address-list',
   ];
 
-  for (const { domain } of resolved) {
-    lines.push(`/ip firewall address-list remove [find list=${listName} comment="${safe(domain)}"]`);
-  }
-
-  lines.push('', '# IPv4: populate address list', '/ip firewall address-list');
   for (const { domain, ips = [] } of resolved) {
-    for (const ip of ips) lines.push(`add list=${listName} address=${ip} comment="${safe(domain)}"`);
+    for (const ip of ips) lines.push(`add list=${listName} address=${ip} comment="${marker} ${safe(domain)}"`);
   }
 
   if (addIPv6) {
-    lines.push('', '# IPv6: remove previous generated entries');
-    for (const { domain } of resolved) {
-      lines.push(`/ipv6 firewall address-list remove [find list=${listName} comment="${safe(domain)}"]`);
-    }
-    lines.push('', '# IPv6: populate address list', '/ipv6 firewall address-list');
+    lines.push('', '# Remove previous generated IPv6 entries', `/ipv6 firewall address-list remove [find list=${listName} comment~"^${marker} "]`, '', '# IPv6: populate address list', '/ipv6 firewall address-list');
     for (const { domain, ipv6 = [] } of resolved) {
-      for (const ip of ipv6) lines.push(`add list=${listName} address=${ip} comment="${safe(domain)}"`);
+      for (const ip of ipv6) lines.push(`add list=${listName} address=${ip} comment="${marker} ${safe(domain)}"`);
     }
   }
 
   if (addFirewallRule) {
-    lines.push('', '# IPv4 enforcement — keep rule placement under review', '/ip firewall filter');
-    lines.push(`:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`);
+    lines.push('', '# IPv4 enforcement — review rule placement', '/ip firewall filter');
+    lines.push(`:if ([:len [find chain=forward dst-address-list=${listName} action=drop comment="${marker}"]] = 0) do={`);
     lines.push(`  add chain=forward dst-address-list=${listName} action=drop comment="${marker}" place-before=0`);
     lines.push('}');
     if (addIPv6) {
-      lines.push('', '# IPv6 enforcement — keep rule placement under review', '/ipv6 firewall filter');
-      lines.push(`:if ([:len [find chain=forward dst-address-list=${listName} action=drop]] = 0) do={`);
+      lines.push('', '# IPv6 enforcement — review rule placement', '/ipv6 firewall filter');
+      lines.push(`:if ([:len [find chain=forward dst-address-list=${listName} action=drop comment="${marker}"]] = 0) do={`);
       lines.push(`  add chain=forward dst-address-list=${listName} action=drop comment="${marker}" place-before=0`);
       lines.push('}');
     }
   }
 
   lines.push('', '# Rollback (review before running):');
-  lines.push(`/ip firewall address-list remove [find list=${listName} comment~"^${marker}"]`);
-  if (addIPv6) lines.push(`/ipv6 firewall address-list remove [find list=${listName} comment~"^${marker}"]`);
+  lines.push(`/ip firewall address-list remove [find list=${listName} comment~"^${marker} "]`);
+  if (addIPv6) lines.push(`/ipv6 firewall address-list remove [find list=${listName} comment~"^${marker} "]`);
   lines.push(`/ip firewall filter remove [find comment="${marker}"]`);
   if (addIPv6) lines.push(`/ipv6 firewall filter remove [find comment="${marker}"]`);
   return lines.join('\n');

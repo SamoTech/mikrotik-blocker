@@ -1,23 +1,40 @@
-# MikroTik Blocker
+# MikroTik Firewall Blocker
 
-> A free, open-source web tool that generates MikroTik RouterOS firewall block scripts by resolving ASNs, BGP prefixes, and CIDR ranges automatically.
+> Open-source reference and web tool for MikroTik RouterOS firewall blocking. This project combines a canonical firewall knowledge layer with domain, ASN, BGP-prefix, IPv4/IPv6, and Layer7 rule generation.
 
-## What it does
+## Canonical source
 
-MikroTik Blocker helps network administrators generate ready-to-paste RouterOS scripts to block specific IP addresses, ASNs, or entire BGP prefix ranges on MikroTik routers. It queries the BGPView API to resolve ASN-to-prefix mappings in real time.
+The canonical firewall reference is in `docs/firewall/`.
 
-## Use cases
+Important documents:
 
-- Block a specific country's IP ranges on MikroTik
-- Block an ASN (e.g., a cloud provider or hosting service)
-- Generate a firewall address-list script for RouterOS
-- Bulk IP blocking without manual CIDR lookup
+- `docs/firewall/README.md` — firewall reference index
+- `docs/firewall/architecture.md` — packet-flow and enforcement architecture
+- `docs/firewall/address-lists.md` — address-list design
+- `docs/firewall/filter-rules.md` — IPv4 filter patterns
+- `docs/firewall/ipv6-filter-rules.md` — IPv6 filter patterns
+- `docs/firewall/layer7.md` — Layer7 matching and limitations
+- `docs/firewall/dns-blocking.md` — DNS/DoH considerations
+- `docs/firewall/asn-cidr.md` — ASN/BGP/CIDR strategy
+- `docs/firewall/routeros6-vs-7.md` — version assumptions
+- `docs/firewall/hardening.md` — safe deployment and rollback
+- `docs/firewall/troubleshooting.md` — diagnostics
+- `docs/firewall/agent-context.md` — AI agent usage contract
+- `docs/firewall/catalog/platforms.md` — network/platform catalog
 
-## Tech stack
+## What the application does
 
-- Frontend: React + Vite
-- Backend: Node.js API (Vercel serverless)
-- Data source: BGPView API for ASN/prefix resolution
+MikroTik Firewall Blocker generates RouterOS-ready scripts from domains and network identifiers. The resolver combines DNS, CNAME, ASN/BGP, IPv4, IPv6, and optional Layer7 information and can export `.rsc` output.
+
+The live application also exposes script validation, scheduling, category blocklists, and optional deployment integrations.
+
+## Source policy
+
+Routing data changes over time. Static CIDR mappings are fallbacks, not permanent truth. Agents and users should verify current routing data before broad production blocks.
+
+## Safety
+
+Do not assume an ASN belongs exclusively to one service. Review rule order, management access, IPv4/IPv6 coverage, shared infrastructure, Layer7 limitations, and rollback before deployment.
 
 ## Links
 

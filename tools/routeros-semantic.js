@@ -66,24 +66,40 @@ function inferKind(path) {
   return null;
 }
 
-function resourceIdentity(kind, attrs, index) {
-  const preferred = attrs['.id'] || attrs.id || attrs.name || attrs['list'] || attrs['chain'];
+function resourceIdentity(kind, attrs) {
+  const preferred = attrs['.id'] || attrs.id || attrs.name || attrs.address || attrs['list'] || attrs['chain'];
   if (preferred) return `${kind}:${String(preferred)}`;
   const stable = { kind, attributes: canonicalValue(attrs) };
-  return `${kind}:sha256:${sha256(JSON.stringify(stable)).slice(0, 24)}:${index}`;
+  return `${kind}:sha256:${sha256(JSON.stringify(stable)).slice(0, 24)}`;
 }
 
 function normalize(parsed) {
   if (!parsed || typeof parsed !== 'object') throw new TypeError('Parser result is required');
-  const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
+
+  // routeros-parser exposes parsed resources; commands is accepted for forward compatibility.
+  const entries = Array.isArray(parsed.resources)
+    ? parsed.resources
+    : Array.isArray(parsed.commands)
+      ? parsed.commands
+      : [];
+
   const resources = [];
   const diagnostics = Array.isArray(parsed.diagnostics) ? [...parsed.diagnostics] : [];
   const inventory = {};
+  const identityCounts = new Map();
 
-  commands.forEach((command, index) => {
+  entries.forEach((command, index) => {
     const path = command.path || command.section || '/';
-    const kind = inferKind(path);
+    const inferredKind = inferKind(path);
+    const kind = inferredKind || command.kind || 'opaque';
     const attrs = canonicalValue(command.attributes || command.attrs || {});
+    const baseIdentity = inferredKind
+      ? resourceIdentity(kind, attrs)
+      : (command.identity || `opaque:${index}`);
+    const occurrence = identityCounts.get(baseIdentity) || 0;
+    identityCounts.set(baseIdentity, occurrence + 1);
+    const identity = occurrence === 0 ? baseIdentity : `${baseIdentity}#${occurrence + 1}`;
+
     const source = {
       commandIndex: index,
       line: command.line || command.lineNumber || null,
@@ -91,36 +107,36 @@ function normalize(parsed) {
       raw: command.raw || null,
     };
 
-    if (!kind) {
-      resources.push({
-        kind: 'opaque', path, identity: `opaque:${index}`, attributes: attrs,
-        source, status: 'opaque', order: index,
-      });
-      return;
-    }
-
     const resource = {
       kind,
       path,
-      identity: resourceIdentity(kind, attrs, index),
+      identity,
       attributes: attrs,
       source,
-      status: 'recognized',
-      order: index,
+      status: inferredKind ? 'recognized' : 'opaque',
     };
-    if (!ORDER_SENSITIVE.has(kind)) delete resource.order;
+
+    if (command.verb) resource.verb = command.verb;
+    if (ORDER_SENSITIVE.has(kind) || kind === 'opaque') resource.order = index;
+
     resources.push(resource);
     inventory[kind] = (inventory[kind] || 0) + 1;
   });
 
   const semantic = {
     schemaVersion: '1.0.0',
-    parser: parsed.parser || { name: 'routeros-parser' },
+    parser: parsed.parser || { name: 'routeros-parser', schemaVersion: parsed.schemaVersion || null },
     routeros: parsed.routeros || parsed.version || null,
     source: parsed.source || null,
     resources,
     inventory,
     diagnostics,
+  };
+
+  semantic.statistics = {
+    resourceCount: resources.length,
+    recognizedCount: resources.filter((resource) => resource.status === 'recognized').length,
+    opaqueCount: resources.filter((resource) => resource.status === 'opaque').length,
   };
 
   semantic.fingerprint = sha256(JSON.stringify(canonicalValue({
@@ -129,6 +145,7 @@ function normalize(parsed) {
     resources,
     diagnostics,
   })));
+
   return semantic;
 }
 

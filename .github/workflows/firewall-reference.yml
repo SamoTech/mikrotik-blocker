@@ -1,0 +1,58 @@
+name: Firewall Reference Checks
+
+on:
+  push:
+    paths:
+      - 'docs/firewall/**'
+      - 'frontend/public/llms.txt'
+  pull_request:
+    paths:
+      - 'docs/firewall/**'
+      - 'frontend/public/llms.txt'
+
+jobs:
+  markdown:
+    name: Firewall reference integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check canonical files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            docs/firewall/README.md
+            docs/firewall/architecture.md
+            docs/firewall/address-lists.md
+            docs/firewall/filter-rules.md
+            docs/firewall/ipv6-filter-rules.md
+            docs/firewall/layer7.md
+            docs/firewall/dns-blocking.md
+            docs/firewall/asn-cidr.md
+            docs/firewall/routeros6-vs-7.md
+            docs/firewall/hardening.md
+            docs/firewall/troubleshooting.md
+            docs/firewall/agent-context.md
+            docs/firewall/catalog/platforms.md
+          )
+          for file in "${files[@]}"; do
+            test -s "$file"
+          done
+
+      - name: Check RouterOS example files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/firewall/examples/basic-domain-block.rsc
+          test -s docs/firewall/examples/address-list-block.rsc
+          test -s docs/firewall/examples/ipv6-block.rsc
+          test -s docs/firewall/examples/layer7-block.rsc
+
+      - name: Check AI context contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'Authority order' docs/firewall/agent-context.md
+          grep -q 'RouterOS version' docs/firewall/agent-context.md
+          grep -q 'Rollback' docs/firewall/agent-context.md

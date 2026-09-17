@@ -5,12 +5,13 @@ const fs = require('fs');
 const path = require('path');
 const { analyze, formatReport } = require('../tools/firewall-doctor');
 const { validate } = require('../tools/validate-manifest');
+const { simulate } = require('../tools/policy-simulator');
 
 const args = process.argv.slice(2);
 const command = args[0];
 
 function usage() {
-  console.log(`MikroTik Blocker CLI\n\nCommands:\n  inspect <router.rsc> [--json]   Analyze a RouterOS export\n  validate <router.rsc>           Analyze and fail on high/critical findings\n  manifest validate <file.json>  Validate a Policy Manifest\n  recipe search [term]            Search local recipe registry\n  recipe show <id>                Show a recipe\n`);
+  console.log(`MikroTik Blocker CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
 }
 
 function recipeDirs() {
@@ -36,6 +37,13 @@ if (command === 'manifest' && args[1] === 'validate') {
   const result = validate(JSON.parse(fs.readFileSync(file, 'utf8')));
   console.log(result.valid ? 'Policy manifest: valid' : `Policy manifest: invalid\n${result.errors.map(e => `- ${e}`).join('\n')}`);
   process.exit(result.valid ? 0 : 1);
+}
+
+if (command === 'simulate') {
+  const file = args[1];
+  if (!file || !fs.existsSync(file)) { console.error('Manifest file not found.'); process.exit(2); }
+  console.log(JSON.stringify(simulate(JSON.parse(fs.readFileSync(file, 'utf8'))), null, 2));
+  process.exit(0);
 }
 
 if (command === 'recipe') {

@@ -1,0 +1,26 @@
+name: MikroTik Blocker Firewall Doctor
+description: Analyze a RouterOS export for common firewall safety and correctness issues
+branding:
+  icon: shield
+  color: blue
+inputs:
+  file:
+    description: Path to a RouterOS .rsc export
+    required: true
+  fail-on-high:
+    description: Fail when high or critical findings are detected
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Run Firewall Doctor
+      shell: bash
+      env:
+        INPUT_FILE: ${{ inputs.file }}
+        FAIL_ON_HIGH: ${{ inputs.fail-on-high }}
+      run: |
+        node "$GITHUB_ACTION_PATH/tools/firewall-doctor.js" "$INPUT_FILE" || {
+          code=$?
+          if [ "$FAIL_ON_HIGH" = "true" ] && [ "$code" -eq 1 ]; then exit 1; fi
+        }

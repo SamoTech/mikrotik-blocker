@@ -1,0 +1,22 @@
+id: dns-hardening
+name: DNS Hardening
+category: security
+routeros:
+  min: "7.0"
+intent: harden_dns
+methods:
+  - exact-resolver-address-list
+  - explicit-dns-policy
+sources:
+  - https://developers.cloudflare.com/1.1.1.1/
+  - https://developers.google.com/speed/public-dns
+  - https://www.quad9.net/service/service-addresses-and-features/
+  - https://www.opendns.com/setupguide/
+risk: medium
+confidence: 0.75
+refresh: manual
+ipv4: true
+ipv6: true
+quic: false
+layer7: false
+rollback: supported

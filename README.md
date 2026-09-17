@@ -2,153 +2,234 @@
 
 [![MikroTik Firewall Blocker](https://raw.githubusercontent.com/SamoTech/mikrotik-blocker/main/frontend/public/og-image.png)](https://mikrotik-blocker.vercel.app)
 
-A free, open-source reference and generator for MikroTik RouterOS firewall blocking. It resolves domains, ASNs, BGP prefixes, IPv4/IPv6 addresses, and DNS infrastructure into RouterOS-ready address-list, filter, and optional Layer7 rules.
+**Open-source firewall intelligence, policy generation and automation for MikroTik RouterOS.**
 
-**Live tool:** https://mikrotik-blocker.vercel.app  
+MikroTik Blocker turns a simple requirement such as `block this service` into an explainable, reviewable and reversible RouterOS firewall policy.
+
+**Try it:** https://mikrotik-blocker.vercel.app  
 **Source:** https://github.com/SamoTech/mikrotik-blocker
 
-> **Project goal:** make this repository a practical, versioned source of MikroTik firewall blocking knowledge and reusable RouterOS implementations — not only a web UI.
+> **The project is bigger than an IP blocker.** It is a Firewall Policy Compiler + Recipe Registry + Firewall Doctor for MikroTik.
 
-## What this project is
+## The 60-second demo
 
-MikroTik Firewall Blocker combines two layers:
-
-1. **Reference knowledge** — documented blocking patterns, RouterOS syntax, design decisions, safety notes, and reproducible examples.
-2. **Automation** — a resolver and script generator that turns domains and network identifiers into deployable RouterOS `.rsc` scripts.
-
-The current application already supports bulk domains, ASN/CIDR resolution, DNS resolution, IPv6, category blocklists, script generation, validation, scheduling, and optional Layer7 matching.
-
-## Canonical firewall knowledge
-
-The repository now treats `docs/firewall/` as the canonical human- and AI-readable reference layer. Application code and generated scripts should follow the concepts documented there rather than maintaining competing definitions.
+Input:
 
 ```text
-docs/
-└── firewall/
-    ├── README.md                  # Canonical firewall index
-    ├── architecture.md           # Packet-flow and enforcement model
-    ├── address-lists.md          # Address-list design patterns
-    ├── filter-rules.md           # IPv4 filter rules
-    ├── ipv6-filter-rules.md      # IPv6 filter rules
-    ├── layer7.md                 # Layer7 matching and limitations
-    ├── dns-blocking.md           # DNS and DoH considerations
-    ├── asn-cidr.md               # ASN/BGP/CIDR strategy
-    ├── routeros6-vs-7.md         # Version differences
-    ├── hardening.md              # Rule order, logging, rollback
-    ├── troubleshooting.md        # Diagnostics and failure modes
-    ├── examples/
-    │   ├── basic-domain-block.rsc
-    │   ├── address-list-block.rsc
-    │   ├── ipv6-block.rsc
-    │   └── layer7-block.rsc
-    └── catalog/
-        └── platforms.md          # Curated platform/ASN mappings
+facebook.com
+tiktok.com
 ```
 
-## Supported blocking methods
+The engine can combine:
 
-### Address-list + filter
-
-The core enforcement pattern is an `/ip firewall address-list` referenced by a `forward` filter rule.
-
-```rsc
-/ip firewall address-list
-add list=blocked_sites address=203.0.113.10 comment="example.com"
-
-/ip firewall filter
-add chain=forward dst-address-list=blocked_sites action=drop comment="Block blocked_sites"
+```text
+Domain
+  ↓
+DNS / CNAME
+  ↓
+ASN / BGP prefixes
+  ↓
+IPv4 + IPv6
+  ↓
+Risk / scope analysis
+  ↓
+RouterOS policy
+  ↓
+Validation
+  ↓
+Deploy or download .rsc
 ```
 
-For production networks, address-list based enforcement should normally be preferred over broad Layer7 inspection when the traffic model permits it.
+Output can include address-lists, filter rules, IPv6 policy and optional Layer7 rules, depending on the selected strategy.
 
-### CIDR / ASN blocking
+The important difference is that the project is designed to explain **why** an address was included and **what the generated policy will affect**, rather than returning an opaque list of IPs.
 
-The resolver can obtain announced prefixes for known ASNs and merge them with DNS-derived addresses. The current resolver uses a primary BGP prefix source, a secondary BGPView fallback, and static CIDR fallbacks for selected ASNs.
+## Why this project exists
 
-This is useful when a service uses many hostnames or dynamic address pools, but ASN blocking can also catch unrelated services when an ASN is shared. CIDR scope must therefore be reviewed before deployment.
+MikroTik RouterOS already provides a powerful firewall, including stateful filtering, RAW filtering, address lists, Layer7 matching and IPv6 support. citeturn0search2turn0search9
 
-### IPv6
+The difficult part is maintaining the intelligence around the rules:
 
-IPv6 must be handled explicitly. An IPv4-only block does not block equivalent IPv6 traffic. The application supports AAAA resolution, IPv6 prefixes, and `/ipv6 firewall` output.
+- services change IPs
+- CDNs move workloads
+- ASNs announce new prefixes
+- DNS answers change
+- IPv6 can bypass an IPv4-only policy
+- broad cloud ranges can create false positives
+- firewall rule order changes the result
+- expensive matchers can affect router performance
 
-### Layer7
+MikroTik Blocker is designed to handle that intelligence layer.
 
-Layer7 rules can inspect HTTP host data and TLS SNI patterns, but packet inspection is CPU-intensive. Modern encrypted traffic, QUIC/HTTP3, ECH, application protocols, and fragmented or obfuscated traffic can reduce effectiveness. Layer7 is therefore an optional enforcement method rather than the default.
+## Core capabilities
+
+### Firewall Policy Compiler
+
+```text
+Intent
+  → Evidence
+  → Resolution
+  → Risk analysis
+  → Enforcement strategy
+  → RouterOS policy
+  → Validation
+  → Deployment
+```
+
+The compiler can generate different enforcement strategies instead of treating every problem as a simple IP drop.
+
+### Firewall Recipe Registry
+
+Reusable, versioned recipes for common network policies:
+
+- social platforms
+- streaming
+- gaming
+- advertising and tracking
+- malware infrastructure
+- VPN / proxy infrastructure
+- DNS resolvers
+- cloud services
+- enterprise policies
+- regional CIDR policies
+
+See [`recipes/`](./recipes/README.md).
+
+### Firewall Doctor
+
+The roadmap includes analysis of RouterOS exports to identify ineffective rules, ordering problems, duplicate entries, IPv6 gaps, expensive Layer7 policies, broad CIDRs and missing rollback markers.
+
+### Live network intelligence
+
+The resolver combines multiple evidence sources including ASN prefixes, DNS, CNAME relationships and CIDR information. The current implementation uses live BGP data with fallback data for resilience. Static mappings are treated as operational fallback data, not permanent truth.
+
+### IPv4 + IPv6
+
+A blocking policy is incomplete if it only considers IPv4. MikroTik provides separate IPv6 firewall facilities, so the project treats IPv6 coverage as a first-class policy property. citeturn0search3turn0search6
+
+### Address-list first
+
+Address lists are a core RouterOS mechanism that can be referenced by firewall filter, mangle and NAT facilities. citeturn0search0
+
+For many high-volume blocking cases, the project therefore prefers address-list based enforcement over unnecessary packet-content inspection.
+
+### Layer7 — optional, not magic
+
+Layer7 can be useful for selected protocols, but it is not a universal solution. Modern encrypted traffic, QUIC/HTTP3, ECH and application-specific protocols can limit what payload inspection can reliably identify.
+
+Use it deliberately and understand its CPU cost.
 
 ## Safety model
 
-A syntactically valid RouterOS script is not automatically safe to deploy.
+Generated syntax being valid does not mean a policy is safe.
 
-Before deployment:
+Every serious policy should answer:
 
-- confirm the target address-list does not collide with an existing policy
-- review CIDR/ASN scope for shared infrastructure
-- preserve router management access
-- test broad blocks in a controlled environment
-- use stable comments and rule names for audit and rollback
-- validate both IPv4 and IPv6 behavior
-- avoid unnecessary Layer7 inspection on high-throughput routers
+- What exactly is being blocked?
+- Which evidence supports the block?
+- Is the infrastructure dedicated or shared?
+- Does IPv6 need separate handling?
+- What RouterOS version is required?
+- How expensive is the rule?
+- Could the policy affect unrelated services?
+- How is it rolled back?
+- When should the intelligence be refreshed?
 
-The project includes script validation; administrators should still review generated firewall policy before production deployment.
+RouterOS processes firewall rules in order, so policy placement is part of correctness. citeturn0search2
 
-## RouterOS versioning
+## Canonical firewall knowledge base
 
-Generated material should identify whether it targets RouterOS 6.x or 7.x. Do not assume every syntax example is interchangeable. The application exposes RouterOS version selection in its generation options.
+The repository contains a dedicated reference layer under [`docs/firewall/`](./docs/firewall/).
+
+```text
+docs/firewall/
+├── README.md
+├── architecture.md
+├── address-lists.md
+├── filter-rules.md
+├── ipv6-filter-rules.md
+├── layer7.md
+├── dns-blocking.md
+├── asn-cidr.md
+├── routeros6-vs-7.md
+├── hardening.md
+├── troubleshooting.md
+├── agent-context.md
+├── examples/
+└── catalog/
+```
+
+This is the source of truth for the project's firewall concepts and reusable RouterOS patterns.
 
 ## API
 
-`POST /api/resolve` accepts domains and generation options and returns resolved addresses plus a RouterOS script. The current interface includes output mode, IPv6, filter generation, source blocking, Layer7, and category blocklist options.
+### `POST /api/resolve`
 
-`POST /api/validate` validates generated script content and reports errors, warnings, and informational findings.
+Resolve domains and generate a RouterOS policy.
 
-## Architecture
+```json
+{
+  "domains": ["facebook.com", "tiktok.com"],
+  "listName": "blocked",
+  "outputMode": "both",
+  "includeIPv6": true,
+  "addLayer7": false
+}
+```
 
-The repository contains a Vercel API, an optional self-hosted Express backend, and a React/Vite frontend. The API resolver contains the domain/ASN mapping and multi-stage resolution engine; the backend contains reusable DNS, scheduling, and RouterOS script-generation services.
+### `POST /api/validate`
 
-The resolver currently implements a multi-layer strategy covering ASN prefixes, multi-provider DoH, public blocklists, subdomain variants, CNAME traversal, IP-to-CIDR lookup, and reverse-DNS discovery.
+Validate generated RouterOS script content and return errors, warnings and informational findings.
 
-## Data quality and source policy
-
-Network ownership and routing prefixes change over time. Static CIDR tables are resilience fallbacks, not permanent truth. Live routing data should be preferred whenever available.
-
-When adding or changing a platform mapping:
-
-1. record the ASN/source and verification date
-2. prefer authoritative routing or registry data over copied lists
-3. document whether the ASN is dedicated or shared
-4. distinguish a service's own ranges from generic cloud/CDN infrastructure
-5. test both expected blocking and false-positive scope
-
-## Example workflow
+## Project architecture
 
 ```text
-Domain / ASN input
-        ↓
-Normalize + validate
-        ↓
-DNS + CNAME + ASN/BGP resolution
-        ↓
-Deduplicate IPv4 / IPv6 / CIDRs
-        ↓
-Select enforcement method
-        ├── Address-list + filter
-        ├── CIDR block
-        └── Optional Layer7
-        ↓
-Generate RouterOS script
-        ↓
-Validate
-        ↓
-Human review
-        ↓
-Deploy / rollback
+┌────────────────────────────────────────────┐
+│              MikroTik Blocker              │
+├────────────────────────────────────────────┤
+│ Firewall Recipe Registry                   │
+│        ↓                                   │
+│ Firewall Intelligence / Resolution         │
+│        ↓                                   │
+│ Policy Compiler                            │
+│        ↓                                   │
+│ Validation + Risk Analysis                 │
+│        ↓                                   │
+│ RouterOS .rsc / API / Scheduler            │
+└────────────────────────────────────────────┘
 ```
+
+Implementation currently includes a Vercel API, React/Vite frontend and optional self-hosted backend.
+
+## Roadmap
+
+The long-term roadmap is intentionally focused on operational value:
+
+1. Canonical firewall knowledge base
+2. Safe policy manifests and deterministic rollback
+3. Policy simulator and cost estimation
+4. Firewall Doctor for RouterOS exports
+5. Versioned community recipe registry
+6. CLI + GitHub Action
+7. Automated refresh and deployment history
+8. Signed policy manifests and reproducible deployments
+9. Community-maintained recipe packs
+
+Read [`docs/PRODUCT_VISION.md`](./docs/PRODUCT_VISION.md) for the full product direction and [`docs/GROWTH.md`](./docs/GROWTH.md) for the community strategy.
 
 ## Contributing
 
-Contributions should improve RouterOS correctness, firewall documentation, network-data accuracy, resolver reliability, IPv4/IPv6 coverage, validation, or reproducible examples.
+The easiest way to contribute is to improve one small, reproducible piece:
 
-For firewall behavior changes, document the intended packet path, RouterOS version, rule-order assumptions, source of network data, and rollback behavior.
+- add a firewall recipe
+- verify an ASN mapping
+- improve RouterOS compatibility
+- report a false positive
+- add a RouterOS example
+- improve validation
+- document a failure mode
+
+For firewall behavior changes, include the RouterOS version, packet path, rule-order assumptions, expected effect and rollback behavior.
 
 ## License
 

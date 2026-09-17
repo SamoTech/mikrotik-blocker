@@ -61,6 +61,34 @@ The difficult part is maintaining the intelligence around the rules:
 
 MikroTik Blocker is designed to handle that intelligence layer.
 
+## Quick start
+
+For the web workflow, enter domains in the hosted app and review the generated policy before applying it.
+
+For offline RouterOS analysis:
+
+```bash
+node cli/mikrotik-blocker.js inspect router.rsc
+node cli/mikrotik-blocker.js inspect router.rsc --json
+node cli/mikrotik-blocker.js validate router.rsc
+```
+
+Validate a machine-readable policy contract:
+
+```bash
+node cli/mikrotik-blocker.js manifest validate tools/policy-manifest.example.json
+```
+
+Browse the local recipe registry:
+
+```bash
+node cli/mikrotik-blocker.js recipe search
+node cli/mikrotik-blocker.js recipe search dns
+node cli/mikrotik-blocker.js recipe show dns-hardening
+```
+
+The CLI is deliberately offline for inspection. It does not connect to or modify a router.
+
 ## Core capabilities
 
 ### Firewall Policy Compiler
@@ -95,9 +123,21 @@ Reusable, versioned recipes for common network policies:
 
 See [`recipes/`](./recipes/README.md).
 
-### Firewall Doctor
+### Firewall Doctor — available now
 
-The roadmap includes analysis of RouterOS exports to identify ineffective rules, ordering problems, duplicate entries, IPv6 gaps, expensive Layer7 policies, broad CIDRs and missing rollback markers.
+Analyze a RouterOS `.rsc` export locally before changing a production router. The current analyzer checks for IPv6 coverage gaps, missing stateful baseline signals, repeated address-list entries, multiple Layer7 rules, management-access protection signals and conservative potential shadowing.
+
+```bash
+node tools/firewall-doctor.js router.rsc
+```
+
+It produces findings with severity, evidence and a suggested fix. It is analysis-only: no router credentials, API connection or mutation is required.
+
+### Policy Manifest — available now
+
+Every future compiler/deployment path can use the same machine-readable contract for intent, evidence, coverage, risk, RouterOS compatibility, policy, rollback and provenance.
+
+See [`docs/firewall/policy-manifest.md`](./docs/firewall/policy-manifest.md) and [`schemas/policy-manifest.schema.json`](./schemas/policy-manifest.schema.json).
 
 ### Live network intelligence
 
@@ -154,6 +194,7 @@ docs/firewall/
 ├── routeros6-vs-7.md
 ├── hardening.md
 ├── troubleshooting.md
+├── policy-manifest.md
 ├── agent-context.md
 ├── examples/
 └── catalog/
@@ -193,27 +234,27 @@ Validate generated RouterOS script content and return errors, warnings and infor
 │        ↓                                   │
 │ Policy Compiler                            │
 │        ↓                                   │
-│ Validation + Risk Analysis                 │
+│ Risk + Validation + Firewall Doctor        │
 │        ↓                                   │
-│ RouterOS .rsc / API / Scheduler            │
+│ Policy Manifest → .rsc / API / CLI / CI   │
 └────────────────────────────────────────────┘
 ```
 
-Implementation currently includes a Vercel API, React/Vite frontend and optional self-hosted backend.
+Implementation includes a Vercel API, React/Vite frontend, optional self-hosted backend, offline CLI tooling and CI validation.
 
 ## Roadmap
 
-The long-term roadmap is intentionally focused on operational value:
-
-1. Canonical firewall knowledge base
-2. Safe policy manifests and deterministic rollback
-3. Policy simulator and cost estimation
-4. Firewall Doctor for RouterOS exports
-5. Versioned community recipe registry
-6. CLI + GitHub Action
-7. Automated refresh and deployment history
+1. Canonical firewall knowledge base — **done**
+2. Policy Manifest + deterministic rollback contract — **done**
+3. Firewall Doctor MVP — **done**
+4. Recipe Registry foundation — **done**
+5. Policy simulator and cost estimation — next
+6. CLI + CI integration — **foundation done**
+7. Automated intelligence refresh and deployment history
 8. Signed policy manifests and reproducible deployments
 9. Community-maintained recipe packs
+
+The next product milestone is to turn Firewall Doctor findings into reviewable patch files and to add a policy simulator that can estimate scope and likely collateral impact before deployment.
 
 Read [`docs/PRODUCT_VISION.md`](./docs/PRODUCT_VISION.md) for the full product direction and [`docs/GROWTH.md`](./docs/GROWTH.md) for the community strategy.
 

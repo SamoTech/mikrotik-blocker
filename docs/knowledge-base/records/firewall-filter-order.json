@@ -1,0 +1,23 @@
+{
+  "id": "firewall.filter-order",
+  "title": "Firewall filter rule order",
+  "domain": "ip.firewall.filter",
+  "source": {
+    "url": "https://help.mikrotik.com/docs/display/ROS/Building+Advanced+Firewall",
+    "title": "Building Advanced Firewall",
+    "section": "Firewall rules and processing order",
+    "lastChecked": "2026-09-17"
+  },
+  "intent": "Explain why firewall filter rule ordering must be preserved during analysis and configuration changes.",
+  "evidence": [
+    "RouterOS firewall rules are evaluated in their configured order.",
+    "A preceding rule can accept, drop, reject, or otherwise process traffic before a later rule is reached."
+  ],
+  "severity": "high",
+  "confidence": "high",
+  "remediation": "review-only",
+  "tests": [
+    "tools/routeros-semantic.test.js: preserves order for firewall.filter resources"
+  ],
+  "lastVerified": "2026-09-17"
+}

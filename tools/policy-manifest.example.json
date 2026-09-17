@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "intent": "block_service",
+  "target": "example.com",
+  "evidence": {
+    "domains": ["example.com"],
+    "ipv4": ["203.0.113.10"],
+    "ipv6": ["2001:db8::10"],
+    "cidrs": ["203.0.113.0/24"],
+    "asns": [],
+    "cnames": [],
+    "sources": ["https://dns.google/", "https://bgp.tools/"]
+  },
+  "coverage": {
+    "ipv4": true,
+    "ipv6": true,
+    "dns": true,
+    "quic": false,
+    "layer7": false,
+    "confidence": 0.85
+  },
+  "risk": {
+    "level": "medium",
+    "shared_infrastructure": true,
+    "false_positive_notes": "Example values only. Shared CDN infrastructure can affect unrelated services."
+  },
+  "routeros": {
+    "min_version": "7.0",
+    "features": ["address-list", "firewall-filter", "ipv6-firewall"]
+  },
+  "policy": {
+    "strategy": "combined",
+    "address_list": "blocked_sites",
+    "actions": ["populate IPv4/IPv6 address lists", "review before applying", "drop matching forward traffic"]
+  },
+  "rollback": {
+    "supported": true,
+    "instructions": "Remove entries generated with the recipe comment and remove the generated drop rule after verifying no other policy depends on the list.",
+    "backup_recommended": true
+  },
+  "provenance": {
+    "generator": "MikroTik Blocker",
+    "generator_version": "5.0",
+    "generated_at": "2026-09-17T00:00:00Z",
+    "recipe": "example/block-service"
+  }
+}

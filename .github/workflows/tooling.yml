@@ -1,0 +1,27 @@
+name: Firewall Tooling
+
+on:
+  push:
+    paths:
+      - 'tools/**'
+      - 'schemas/**'
+      - 'cli/**'
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'schemas/**'
+      - 'cli/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/firewall-doctor.test.js
+      - run: node tools/policy-simulator.test.js
+      - run: node tools/validate-manifest.js tools/policy-manifest.example.json
+      - run: node cli/mikrotik-blocker.js inspect tools/routeros-fixtures/ipv4-only.rsc --json
+      - run: node cli/mikrotik-blocker.js simulate tools/policy-manifest.example.json

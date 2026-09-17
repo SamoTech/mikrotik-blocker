@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/SamoTech/mikrotik-blocker/main/schemas/policy-manifest.schema.json",
+  "title": "MikroTik Blocker Policy Manifest",
+  "type": "object",
+  "required": ["schema_version", "intent", "target", "evidence", "coverage", "risk", "routeros", "policy", "rollback", "provenance"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "intent": {"type": "string", "enum": ["block_service", "block_domain", "block_category", "harden_dns", "apply_recipe", "diagnose_router"]},
+    "target": {"type": "string", "minLength": 1},
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domains": {"type": "array", "items": {"type": "string"}},
+        "ipv4": {"type": "array", "items": {"type": "string"}},
+        "ipv6": {"type": "array", "items": {"type": "string"}},
+        "cidrs": {"type": "array", "items": {"type": "string"}},
+        "asns": {"type": "array", "items": {"type": "string"}},
+        "cnames": {"type": "array", "items": {"type": "string"}},
+        "sources": {"type": "array", "items": {"type": "string", "format": "uri"}}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ipv4": {"type": "boolean"},
+        "ipv6": {"type": "boolean"},
+        "dns": {"type": "boolean"},
+        "quic": {"type": "boolean"},
+        "layer7": {"type": "boolean"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "false_positive_notes"],
+      "properties": {
+        "level": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+        "shared_infrastructure": {"type": "boolean"},
+        "false_positive_notes": {"type": "string"}
+      }
+    },
+    "routeros": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_version": {"type": "string"},
+        "max_version": {"type": "string"},
+        "features": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "address_list", "actions"],
+      "properties": {
+        "strategy": {"type": "string", "enum": ["address_list", "raw", "filter", "layer7", "dns", "combined"]},
+        "address_list": {"type": "string", "minLength": 1},
+        "actions": {"type": "array", "items": {"type": "string"}},
+        "script_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported", "instructions"],
+      "properties": {
+        "supported": {"type": "boolean"},
+        "instructions": {"type": "string"},
+        "backup_recommended": {"type": "boolean"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generator", "generated_at"],
+      "properties": {
+        "generator": {"type": "string"},
+        "generator_version": {"type": "string"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "recipe": {"type": "string"},
+        "sources": {"type": "array", "items": {"type": "string", "format": "uri"}}
+      }
+    }
+  }
+}

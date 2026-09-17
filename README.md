@@ -1,277 +1,106 @@
-# MikroTik Firewall Blocker
+# MikroTik Configuration Manager
 
 [![MikroTik Firewall Blocker](https://raw.githubusercontent.com/SamoTech/mikrotik-blocker/main/frontend/public/og-image.png)](https://mikrotik-blocker.vercel.app)
 
-**Open-source firewall intelligence, policy generation and automation for MikroTik RouterOS.**
+**Open-source configuration management, auditing, policy generation and automation for MikroTik RouterOS.**
 
-MikroTik Blocker turns a simple requirement such as `block this service` into an explainable, reviewable and reversible RouterOS firewall policy.
+MikroTik Blocker is evolving into a full **MikroTik Configuration Management System**. The existing domain/firewall blocker remains a first-class module while the platform expands into RouterOS configuration intelligence, auditing, safe remediation, configuration-as-code and controlled multi-router management.
 
 **Try it:** https://mikrotik-blocker.vercel.app  
+**Firewall Doctor:** https://mikrotik-blocker.vercel.app/doctor  
 **Source:** https://github.com/SamoTech/mikrotik-blocker
 
-> **The project is bigger than an IP blocker.** It is a Firewall Policy Compiler + Recipe Registry + Firewall Doctor for MikroTik.
+## Canonical Project Roadmap
 
-## The 60-second demo
+**[ROADMAP.md](./ROADMAP.md) is the single source of truth for project direction, architecture priorities, development phases, acceptance criteria and release gates.**
 
-Input:
+If another document, issue, example or planning note conflicts with `ROADMAP.md`, update that material or explicitly change the roadmap before implementing the conflicting direction.
 
-```text
-facebook.com
-tiktok.com
-```
-
-The engine can combine:
+## Product Direction
 
 ```text
-Domain
-  ↓
-DNS / CNAME
-  ↓
-ASN / BGP prefixes
-  ↓
-IPv4 + IPv6
-  ↓
-Risk / scope analysis
-  ↓
-RouterOS policy
-  ↓
-Validation
-  ↓
-Deploy or download .rsc
+Discover
+   ↓
+Understand Configuration
+   ↓
+Audit
+   ↓
+Define Desired State
+   ↓
+Generate + Validate
+   ↓
+Review Diff
+   ↓
+Deploy Safely
+   ↓
+Verify
+   ↓
+Detect Drift
+   ↓
+Manage as Code
 ```
 
-Output can include address-lists, filter rules, IPv6 policy and optional Layer7 rules, depending on the selected strategy.
+The platform is built around five rules:
 
-The important difference is that the project is designed to explain **why** an address was included and **what the generated policy will affect**, rather than returning an opaque list of IPs.
+- Official MikroTik documentation is the authoritative source for RouterOS behavior and compatibility.
+- Recommendations must be explainable and traceable to evidence.
+- Configuration changes are reviewable and reversible by default.
+- RouterOS 6/7 compatibility is explicit.
+- AI can assist, but deterministic parsing and validation remain authoritative.
 
-## Why this project exists
+## Current Modules
 
-MikroTik RouterOS already provides a powerful firewall, including stateful filtering, RAW filtering, address lists, Layer7 matching and IPv6 support. citeturn0search2turn0search9
+- **Firewall Blocker** — domain/IP/ASN intelligence and RouterOS firewall policy generation.
+- **Firewall Recipe Registry** — reusable, tested policy recipes with provenance and compatibility metadata.
+- **Policy Compiler** — intent-to-policy foundations and machine-readable Policy Manifests.
+- **Firewall Doctor** — RouterOS firewall analysis, findings, health scoring and safe remediation artifacts.
+- **Policy Simulator** — policy behavior validation foundation.
+- **RouterOS Reference Layer** — canonical firewall documentation and examples.
+- **CLI** — offline inspection, validation and recipe workflows.
 
-The difficult part is maintaining the intelligence around the rules:
+## Near-Term Direction
 
-- services change IPs
-- CDNs move workloads
-- ASNs announce new prefixes
-- DNS answers change
-- IPv6 can bypass an IPv4-only policy
-- broad cloud ranges can create false positives
-- firewall rule order changes the result
-- expensive matchers can affect router performance
+The next development sequence is defined by `ROADMAP.md`:
 
-MikroTik Blocker is designed to handle that intelligence layer.
+1. RouterOS Configuration Domain Model
+2. Deterministic RouterOS export parser
+3. Official MikroTik Documentation Knowledge Base
+4. Expand Firewall Doctor into RouterOS Doctor
+5. Unified findings and provenance model
+6. Configuration Compiler / desired-state model
+7. Semantic configuration diff
+8. Safe Change Set and rollback engine
+9. Live REST/API connector
+10. Multi-router inventory
+11. Configuration drift detection
+12. GitOps / Configuration as Code
+13. AI Configuration Copilot
 
-## Quick start
+## Safety Model
 
-For the web workflow, enter domains in the hosted app and review the generated policy before applying it.
-
-For offline RouterOS analysis:
-
-```bash
-node cli/mikrotik-blocker.js inspect router.rsc
-node cli/mikrotik-blocker.js inspect router.rsc --json
-node cli/mikrotik-blocker.js validate router.rsc
-```
-
-Validate a machine-readable policy contract:
-
-```bash
-node cli/mikrotik-blocker.js manifest validate tools/policy-manifest.example.json
-```
-
-Browse the local recipe registry:
-
-```bash
-node cli/mikrotik-blocker.js recipe search
-node cli/mikrotik-blocker.js recipe search dns
-node cli/mikrotik-blocker.js recipe show dns-hardening
-```
-
-The CLI is deliberately offline for inspection. It does not connect to or modify a router.
-
-## Core capabilities
-
-### Firewall Policy Compiler
+The system is intentionally designed around:
 
 ```text
-Intent
-  → Evidence
-  → Resolution
-  → Risk analysis
-  → Enforcement strategy
-  → RouterOS policy
-  → Validation
-  → Deployment
+Snapshot
+  → Validate
+  → Diff
+  → Approve
+  → Apply
+  → Verify
+       ↓
+    Rollback
 ```
 
-The compiler can generate different enforcement strategies instead of treating every problem as a simple IP drop.
+Generated changes must not silently mutate a production router. Operators should review generated configuration on a lab router or backup before deployment.
 
-### Firewall Recipe Registry
+## Documentation
 
-Reusable, versioned recipes for common network policies:
-
-- social platforms
-- streaming
-- gaming
-- advertising and tracking
-- malware infrastructure
-- VPN / proxy infrastructure
-- DNS resolvers
-- cloud services
-- enterprise policies
-- regional CIDR policies
-
-See [`recipes/`](./recipes/README.md).
-
-### Firewall Doctor — available now
-
-Analyze a RouterOS `.rsc` export locally before changing a production router. The current analyzer checks for IPv6 coverage gaps, missing stateful baseline signals, repeated address-list entries, multiple Layer7 rules, management-access protection signals and conservative potential shadowing.
-
-```bash
-node tools/firewall-doctor.js router.rsc
-```
-
-It produces findings with severity, evidence and a suggested fix. It is analysis-only: no router credentials, API connection or mutation is required.
-
-### Policy Manifest — available now
-
-Every future compiler/deployment path can use the same machine-readable contract for intent, evidence, coverage, risk, RouterOS compatibility, policy, rollback and provenance.
-
-See [`docs/firewall/policy-manifest.md`](./docs/firewall/policy-manifest.md) and [`schemas/policy-manifest.schema.json`](./schemas/policy-manifest.schema.json).
-
-### Live network intelligence
-
-The resolver combines multiple evidence sources including ASN prefixes, DNS, CNAME relationships and CIDR information. The current implementation uses live BGP data with fallback data for resilience. Static mappings are treated as operational fallback data, not permanent truth.
-
-### IPv4 + IPv6
-
-A blocking policy is incomplete if it only considers IPv4. MikroTik provides separate IPv6 firewall facilities, so the project treats IPv6 coverage as a first-class policy property. citeturn0search3turn0search6
-
-### Address-list first
-
-Address lists are a core RouterOS mechanism that can be referenced by firewall filter, mangle and NAT facilities. citeturn0search0
-
-For many high-volume blocking cases, the project therefore prefers address-list based enforcement over unnecessary packet-content inspection.
-
-### Layer7 — optional, not magic
-
-Layer7 can be useful for selected protocols, but it is not a universal solution. Modern encrypted traffic, QUIC/HTTP3, ECH and application-specific protocols can limit what payload inspection can reliably identify.
-
-Use it deliberately and understand its CPU cost.
-
-## Safety model
-
-Generated syntax being valid does not mean a policy is safe.
-
-Every serious policy should answer:
-
-- What exactly is being blocked?
-- Which evidence supports the block?
-- Is the infrastructure dedicated or shared?
-- Does IPv6 need separate handling?
-- What RouterOS version is required?
-- How expensive is the rule?
-- Could the policy affect unrelated services?
-- How is it rolled back?
-- When should the intelligence be refreshed?
-
-RouterOS processes firewall rules in order, so policy placement is part of correctness. citeturn0search2
-
-## Canonical firewall knowledge base
-
-The repository contains a dedicated reference layer under [`docs/firewall/`](./docs/firewall/).
-
-```text
-docs/firewall/
-├── README.md
-├── architecture.md
-├── address-lists.md
-├── filter-rules.md
-├── ipv6-filter-rules.md
-├── layer7.md
-├── dns-blocking.md
-├── asn-cidr.md
-├── routeros6-vs-7.md
-├── hardening.md
-├── troubleshooting.md
-├── policy-manifest.md
-├── agent-context.md
-├── examples/
-└── catalog/
-```
-
-This is the source of truth for the project's firewall concepts and reusable RouterOS patterns.
-
-## API
-
-### `POST /api/resolve`
-
-Resolve domains and generate a RouterOS policy.
-
-```json
-{
-  "domains": ["facebook.com", "tiktok.com"],
-  "listName": "blocked",
-  "outputMode": "both",
-  "includeIPv6": true,
-  "addLayer7": false
-}
-```
-
-### `POST /api/validate`
-
-Validate generated RouterOS script content and return errors, warnings and informational findings.
-
-## Project architecture
-
-```text
-┌────────────────────────────────────────────┐
-│              MikroTik Blocker              │
-├────────────────────────────────────────────┤
-│ Firewall Recipe Registry                   │
-│        ↓                                   │
-│ Firewall Intelligence / Resolution         │
-│        ↓                                   │
-│ Policy Compiler                            │
-│        ↓                                   │
-│ Risk + Validation + Firewall Doctor        │
-│        ↓                                   │
-│ Policy Manifest → .rsc / API / CLI / CI   │
-└────────────────────────────────────────────┘
-```
-
-Implementation includes a Vercel API, React/Vite frontend, optional self-hosted backend, offline CLI tooling and CI validation.
-
-## Roadmap
-
-1. Canonical firewall knowledge base — **done**
-2. Policy Manifest + deterministic rollback contract — **done**
-3. Firewall Doctor MVP — **done**
-4. Recipe Registry foundation — **done**
-5. Policy simulator and cost estimation — next
-6. CLI + CI integration — **foundation done**
-7. Automated intelligence refresh and deployment history
-8. Signed policy manifests and reproducible deployments
-9. Community-maintained recipe packs
-
-The next product milestone is to turn Firewall Doctor findings into reviewable patch files and to add a policy simulator that can estimate scope and likely collateral impact before deployment.
-
-Read [`docs/PRODUCT_VISION.md`](./docs/PRODUCT_VISION.md) for the full product direction and [`docs/GROWTH.md`](./docs/GROWTH.md) for the community strategy.
+- [Canonical Roadmap](./ROADMAP.md)
+- [Product Vision](./docs/PRODUCT_VISION.md)
+- [Firewall Reference](./docs/firewall/README.md)
+- [Recipe Registry](./recipes/README.md)
+- [Growth Strategy](./docs/GROWTH.md)
 
 ## Contributing
 
-The easiest way to contribute is to improve one small, reproducible piece:
-
-- add a firewall recipe
-- verify an ASN mapping
-- improve RouterOS compatibility
-- report a false positive
-- add a RouterOS example
-- improve validation
-- document a failure mode
-
-For firewall behavior changes, include the RouterOS version, packet path, rule-order assumptions, expected effect and rollback behavior.
-
-## License
-
-MIT
+Start with `ROADMAP.md` before proposing or implementing a major feature. New configuration rules should include tests, RouterOS-version applicability and official MikroTik documentation provenance where available.

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamoTech/mikrotik-blocker/schemas/routeros-configuration.schema.json",
+  "title": "MikroTik RouterOS Normalized Configuration",
+  "type": "object",
+  "required": ["schemaVersion", "source", "routeros", "inventory", "resources", "diagnostics", "statistics"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "source": {
+      "type": "object",
+      "required": ["format"],
+      "properties": {
+        "format": {"const": "rsc-export"},
+        "sha256": {"type": "string"},
+        "lineCount": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "routeros": {
+      "type": "object",
+      "required": ["version", "major", "versionSource"],
+      "properties": {
+        "version": {"type": "string"},
+        "major": {"type": ["integer", "null"], "minimum": 0},
+        "versionSource": {"type": "string", "enum": ["header", "comment", "unknown"]}
+      },
+      "additionalProperties": false
+    },
+    "inventory": {
+      "type": "object",
+      "required": ["sections", "resourceCount"],
+      "properties": {
+        "sections": {"type": "array", "items": {"type": "string"}},
+        "resourceCount": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "path", "verb", "line", "attributes", "raw"],
+        "properties": {
+          "kind": {"type": "string"},
+          "path": {"type": "string"},
+          "verb": {"type": "string", "enum": ["add", "set", "remove", "enable", "disable", "reset", "export", "unknown"]},
+          "line": {"type": "integer", "minimum": 1},
+          "attributes": {"type": "object", "additionalProperties": {"type": "string"}},
+          "raw": {"type": "string"},
+          "identity": {"type": ["string", "null"]},
+          "opaque": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "code", "message", "line"],
+        "properties": {
+          "severity": {"type": "string", "enum": ["info", "warning", "error"]},
+          "code": {"type": "string"},
+          "message": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "required": ["commands", "resources", "opaqueCommands", "diagnostics"],
+      "properties": {
+        "commands": {"type": "integer", "minimum": 0},
+        "resources": {"type": "integer", "minimum": 0},
+        "opaqueCommands": {"type": "integer", "minimum": 0},
+        "diagnostics": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

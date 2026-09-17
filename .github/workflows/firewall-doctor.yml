@@ -1,0 +1,35 @@
+name: Firewall Doctor
+
+on:
+  push:
+    paths:
+      - '**/*.rsc'
+      - 'tools/firewall-doctor.js'
+      - 'tools/firewall-doctor.test.js'
+  pull_request:
+    paths:
+      - '**/*.rsc'
+      - 'tools/firewall-doctor.js'
+      - 'tools/firewall-doctor.test.js'
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test Firewall Doctor
+        run: node tools/firewall-doctor.test.js
+      - name: Inspect checked-in RouterOS exports
+        shell: bash
+        run: |
+          set -e
+          shopt -s nullglob globstar
+          files=(**/*.rsc)
+          if [ ${#files[@]} -eq 0 ]; then echo 'No RouterOS export fixtures found.'; exit 0; fi
+          for file in "${files[@]}"; do
+            echo "--- $file"
+            node tools/firewall-doctor.js "$file" || test $? -eq 1
+          done

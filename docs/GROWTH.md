@@ -4,15 +4,9 @@ The project should earn stars because it solves a recurring MikroTik problem, no
 
 ## The distribution unit
 
-The smallest shareable unit is a **Firewall Recipe**.
+The smallest shareable unit is a **Firewall Recipe** or **Firewall Doctor finding**.
 
-A recipe should be:
-
-- understandable in under one minute
-- copyable in one click
-- reproducible from the repository
-- safe to review before deployment
-- useful without installing the full application
+Each artifact should be understandable in under one minute, reproducible from the repository, safe to review before deployment and useful without installing the full application.
 
 ## GitHub discovery
 
@@ -33,15 +27,24 @@ Use these terms naturally in the README, documentation titles, recipe names, exa
 
 ## Star-worthy README structure
 
-The first screen should answer five questions immediately:
+The first screen now answers five questions immediately:
 
 1. What problem does this solve?
 2. Why is it different from a static blocklist?
-3. Show me a real RouterOS result.
+3. What does a RouterOS result look like?
 4. Can I use it without installing anything?
-5. How can I contribute a recipe?
+5. How can I contribute a recipe or diagnostic finding?
 
-Avoid making visitors read the entire architecture before they see value.
+## Product-led shareable artifacts
+
+The repository now has concrete artifacts for sharing:
+
+- `tools/firewall-doctor.js` — offline RouterOS export analysis
+- `tools/policy-simulator.js` — deterministic policy scope estimation
+- `schemas/policy-manifest.schema.json` — machine-readable policy contract
+- `recipes/` — reproducible recipe registry
+- `action.yml` — reusable GitHub Action entry point
+- `docs/SHAREABLE_DEMOS.md` — copyable demo flows
 
 ## Shareable demonstrations
 
@@ -49,8 +52,9 @@ Create small demonstrations that show a measurable before/after:
 
 - domain → live infrastructure → generated policy
 - ASN → current prefixes → RouterOS address-list
-- IPv4-only policy → detected IPv6 bypass
+- IPv4-only policy → detected IPv6 gap
 - firewall export → detected configuration issue → remediation
+- policy manifest → estimated scope → review
 - stale recipe → changed network data → refreshed policy
 
 These demonstrations are more compelling than generic feature lists.
@@ -66,7 +70,18 @@ Use GitHub Issues and Pull Requests as the public contribution funnel:
 - Submit a RouterOS example
 - Share a production-tested policy
 
-Each issue template should ask for enough technical evidence to reproduce the result.
+Issue templates now collect RouterOS version, evidence, IPv4/IPv6 status, false-positive risk and rollback information where relevant.
+
+## GitHub Action distribution
+
+The root `action.yml` makes the Firewall Doctor consumable from configuration repositories. A network team can keep a sanitized RouterOS export under version control and have every pull request analyzed automatically.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: SamoTech/mikrotik-blocker@main
+  with:
+    file: router.rsc
+```
 
 ## Release strategy
 
@@ -81,6 +96,16 @@ Prefer small, meaningful releases:
 
 Release notes should include a concrete example whenever possible.
 
+## Launch sequence
+
+1. Publish the new product positioning and README.
+2. Publish one Firewall Doctor demo using the checked-in fixture.
+3. Publish the Policy Manifest example.
+4. Publish the DNS hardening recipe as the first registry contribution.
+5. Invite MikroTik administrators to submit false positives and recipes with the issue templates.
+6. Turn validated community submissions into versioned recipes.
+7. Publish release notes around real fixes and compatibility improvements.
+
 ## Avoid vanity growth
 
 Do not use fake stars, star exchanges, spam comments, mass unsolicited promotion, misleading benchmarks, or claims that cannot be reproduced.
@@ -90,13 +115,15 @@ The project's reputation is more valuable than a temporary spike in stars.
 ## North-star conversion funnel
 
 ```text
-GitHub search / social post
+GitHub search / technical post
           ↓
      README demo
           ↓
-    Try one recipe
+  Try a recipe / Doctor
           ↓
   Generate / validate policy
+          ↓
+       Review
           ↓
        Deploy
           ↓

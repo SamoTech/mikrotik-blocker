@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamoTech/mikrotik-blocker/blob/main/docs/knowledge-base/schemas/knowledge-record.schema.json",
+  "title": "MikroTik Official Knowledge Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "domain",
+    "source",
+    "intent",
+    "evidence",
+    "severity",
+    "confidence",
+    "remediation",
+    "tests",
+    "lastVerified"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "routeros": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "max": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title", "section"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://(help\\.)?mikrotik\\.com/.*"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "section": { "type": "string", "minLength": 1 },
+        "lastChecked": { "type": "string", "format": "date" }
+      }
+    },
+    "intent": { "type": "string", "minLength": 1 },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["informational", "low", "medium", "high", "critical"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "remediation": {
+      "type": "string",
+      "enum": ["informational", "review-only", "generated", "safe-to-apply"]
+    },
+    "tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "lastVerified": { "type": "string", "format": "date" }
+  }
+}

@@ -4,14 +4,20 @@ import { BrowserRouter } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App.jsx';
+import FirewallDoctorPage from './pages/FirewallDoctorPage.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
+import './pages/FirewallDoctorPage.css';
+
+function Root() {
+  return window.location.pathname === '/doctor' ? <FirewallDoctorPage /> : <App />;
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
-        <App />
+        <Root />
         <Analytics />
         <SpeedInsights />
       </BrowserRouter>

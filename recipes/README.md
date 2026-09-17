@@ -19,16 +19,15 @@ intent: "Block Example Service from LAN clients"
 methods:
   - address-list
   - cidr
-  - layer7
 sources:
   - dns
   - bgp
 risk: medium
-confidence: high
+confidence: 0.85
 refresh: 24h
 ipv4: true
 ipv6: true
-rollback: true
+rollback: supported
 ```
 
 Then provide:
@@ -38,6 +37,10 @@ Then provide:
 3. `policy.rsc` — generated/reference RouterOS policy
 4. `tests/` — expected validation cases
 5. `CHANGELOG.md` — material network-data or policy changes
+
+## Current registry
+
+- [`dns-hardening/`](./dns-hardening/) — controlled public DNS resolver policy template
 
 ## Required quality rules
 

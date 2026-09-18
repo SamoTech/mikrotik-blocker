@@ -96,7 +96,11 @@ function analyzeModel(model) {
     if (a.action === 'drop' || a.action === 'reject') terminal.add(key);
   }
 
-  const normalizedFindings = sortFindings(findings.map(f => createFinding({\n    ...f,\n    engine: { name: 'RouterOS Doctor', model: model.schemaVersion },\n    routeros: model.routeros,\n  })));
+  const normalizedFindings = sortFindings(findings.map(f => createFinding({
+    ...f,
+    engine: { name: 'RouterOS Doctor', model: model.schemaVersion },
+    routeros: model.routeros,
+  })));
 
   return {
     schema_version: '2.0',

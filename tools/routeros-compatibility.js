@@ -11,7 +11,7 @@ function sha256(value) {
 function parseVersion(value) {
   if (value === null || value === undefined) return null;
   const text = String(value).trim();
-  const match = text.match(/^(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?(?:[-+].*)?$/);
+  const match = text.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$/);
   if (!match) return null;
   return {
     raw: text,

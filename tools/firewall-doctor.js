@@ -16,6 +16,7 @@ const { normalize } = require('./routeros-semantic');
 
 const KNOWLEDGE = new Map([
   ['firewall.filter-order', require('../docs/knowledge-base/records/firewall-filter-order.json')],
+  ['firewall.ipv6-coverage', require('../docs/knowledge-base/records/firewall-ipv6-coverage.json')],
 ]);
 
 function parseAttrs(line) {
@@ -81,10 +82,10 @@ function analyzeModel(model) {
     findings.push(withKnowledge({
       id: 'IPV6_COVERAGE', severity: 'high', title: 'IPv4 policy without IPv6 firewall coverage',
       evidence: 'The semantic model contains IPv4 firewall filter resources but no IPv6 firewall filter resources.',
-      fix: 'Mirror intentional blocking controls in /ipv6 firewall filter and review IPv6 address-list coverage.',
-    }, 'firewall.filter-order'));
+      fix: 'Review the intended IPv6 design and mirror required controls in /ipv6 firewall filter when IPv6 is enabled.',
+    }, 'firewall.ipv6-coverage'));
   }
-  if (hasIPv4 && !hasEstablished) findings.push({ id: 'STATEFUL_BASELINE', severity: 'medium', title: 'No established/related baseline detected', evidence: 'No IPv4 filter resource matched connection-state=established or related.', fix: 'Review rule ordering and add an appropriate stateful baseline for your router design.' });
+  if (hasIPv4 && !hasEstablished) findings.push(withKnowledge({ id: 'STATEFUL_BASELINE', severity: 'medium', title: 'No established/related baseline detected', evidence: 'No IPv4 filter resource matched connection-state=established or related.', fix: 'Review rule ordering and add an appropriate stateful baseline for your router design.' }, 'firewall.filter-order'));
   if (layer7Count >= 3) findings.push({ id: 'LAYER7_COST', severity: 'medium', title: 'Multiple Layer7 rules detected', evidence: `${layer7Count} Layer7 matchers were detected in semantic firewall resources.`, fix: 'Prefer address-list/RAW classification where possible; keep Layer7 narrowly scoped because it can be expensive.' });
   if (hasIPv4 && !hasManagementProtection) findings.push({ id: 'MGMT_REVIEW', severity: 'medium', title: 'Management access protection needs review', evidence: 'No obvious drop rule for common management ports was detected in semantic IPv4 filter resources.', fix: 'Verify that WinBox/SSH/API management is restricted to trusted source addresses or interfaces.' });
 
@@ -99,7 +100,7 @@ function analyzeModel(model) {
   for (const rule of rules) {
     const a = rule.resource.attributes || {};
     const key = ['chain', 'src-address', 'dst-address', 'src-address-list', 'dst-address-list', 'protocol', 'dst-port', 'in-interface', 'out-interface'].map(k => `${k}=${a[k] || ''}`).join('&');
-    if (terminal.has(key)) findings.push({ id: 'SHADOWED_RULE', severity: 'medium', title: 'Potentially shadowed duplicate rule', evidence: `Resource ${rule.resource.identity} repeats an earlier match signature at source line ${rule.resource.source.line || '?'}.`, fix: 'Review rule order and remove or intentionally reorder duplicate rules.' });
+    if (terminal.has(key)) findings.push(withKnowledge({ id: 'SHADOWED_RULE', severity: 'medium', title: 'Potentially shadowed duplicate rule', evidence: `Resource ${rule.resource.identity} repeats an earlier match signature at source line ${rule.resource.source.line || '?'}.`, fix: 'Review rule order and remove or intentionally reorder duplicate rules.' }, 'firewall.filter-order'));
     if (a.action === 'drop' || a.action === 'reject') terminal.add(key);
   }
 

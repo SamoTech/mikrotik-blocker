@@ -1,0 +1,23 @@
+{
+  "id": "firewall.ipv6-coverage",
+  "title": "IPv4 and IPv6 firewall coverage",
+  "domain": "ip.firewall.filter",
+  "source": {
+    "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/48660574/Filter",
+    "title": "Filter - RouterOS",
+    "section": "IPv6 firewall",
+    "lastChecked": "2026-09-18"
+  },
+  "intent": "Explain why IPv6 firewall policy must be reviewed when IPv6 is enabled or present in the network design.",
+  "evidence": [
+    "MikroTik documents separate IPv4 and IPv6 firewall filter menus and provides IPv6 filter examples for protecting the router and LAN clients.",
+    "The documentation states that in common IPv6 setups clients can be publicly reachable, making appropriate firewall filtering important."
+  ],
+  "severity": "high",
+  "confidence": "high",
+  "remediation": "review-only",
+  "tests": [
+    "tools/firewall-doctor.test.js: detects IPv4-only firewall coverage"
+  ],
+  "lastVerified": "2026-09-18"
+}

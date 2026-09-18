@@ -55,6 +55,77 @@ async function requestReadOnly(options, path, requestOptions = {}) {
   }
 }
 
+async function discoverCapabilities(options) {
+  const inspection = await inspectRouter(options);
+  const probes = [
+    'system/package',
+    'interface',
+    'ip/address',
+    'ip/route',
+    'ip/firewall/filter',
+    'ip/firewall/nat',
+    'ip/service'
+  ];
+  const results = {};
+  for (const path of probes) {
+    try {
+      results[path] = await requestReadOnly(options, path);
+    } catch (error) {
+      results[path] = { path: '/' + path, status: null, data: [], error: error.message };
+    }
+  }
+
+  const available = {};
+  for (const path of probes) available[path] = results[path].status === 200;
+
+  return {
+    ...inspection,
+    capabilities: {
+      ...inspection.capabilities,
+      discovered: available
+    },
+    capability_probe_count: probes.length
+  };
+}
+
+async function retrieveSnapshot(options, paths) {
+  if (!options || typeof options.fetch !== 'function') {
+    throw new TypeError('A fetch implementation is required.');
+  }
+  const selected = Array.isArray(paths) && paths.length
+    ? paths
+    : ['system/resource', 'system/package', 'interface', 'ip/address', 'ip/route',
+       'ip/firewall/filter', 'ip/firewall/nat', 'ip/service'];
+
+  const resources = {};
+  const errors = [];
+  for (const path of selected) {
+    try {
+      resources[path.replace(/^\/+/, '')] = await requestReadOnly(options, path);
+    } catch (error) {
+      errors.push({ path: '/' + String(path).replace(/^\/+/, ''), error: error.message });
+    }
+  }
+
+  const payload = {
+    schema_version: SCHEMA_VERSION,
+    mode: 'read-only',
+    mutation_performed: false,
+    router_base_url: sanitizeBaseUrl(options.baseUrl).origin,
+    captured_at: new Date().toISOString(),
+    resources,
+    errors
+  };
+
+  const crypto = require('crypto');
+  payload.content_fingerprint = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(payload), 'utf8')
+    .digest('hex');
+
+  return payload;
+}
+
 async function inspectRouter(options) {
   if (!options || typeof options.fetch !== 'function') throw new TypeError('A fetch implementation is required.');
 
@@ -87,5 +158,7 @@ module.exports = {
   READ_ONLY_METHODS,
   sanitizeBaseUrl,
   requestReadOnly,
-  inspectRouter
+  inspectRouter,
+  discoverCapabilities,
+  retrieveSnapshot
 };

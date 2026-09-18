@@ -41,6 +41,8 @@ const KIND_MAP = [
   [/^\/queue\//, 'queue'],
 ];
 
+const COMMENT_IDENTIFIABLE = new Set(['firewall.filter', 'firewall.nat', 'firewall.mangle', 'firewall.raw', 'ipv6.firewall.filter', 'routing']);
+
 const ORDER_SENSITIVE = new Set([
   'firewall.filter', 'firewall.nat', 'firewall.mangle', 'firewall.raw',
   'ipv6.firewall.filter', 'routing'
@@ -72,8 +74,15 @@ function inferKind(path) {
 }
 
 function resourceIdentity(kind, attrs) {
-  const preferred = attrs['.id'] || attrs.id || attrs.name || attrs.address || attrs['list'] || attrs['chain'];
-  if (preferred) return `${kind}:${String(preferred)}`;
+  const preferredKeys = ['.id', 'id', 'name'];
+  if (COMMENT_IDENTIFIABLE.has(kind)) preferredKeys.push('comment');
+  if (kind === 'ip.address' || kind === 'ipv6.address') preferredKeys.push('address');
+  if (kind === 'firewall.address-list' || kind === 'ipv6.firewall.address-list') preferredKeys.push('list', 'address');
+  for (const key of preferredKeys) {
+    if (attrs[key] !== undefined && attrs[key] !== null && String(attrs[key]) !== '') {
+      return `${kind}:${key}=${String(attrs[key])}`;
+    }
+  }
   const stable = { kind, attributes: canonicalValue(attrs) };
   return `${kind}:sha256:${sha256(JSON.stringify(stable)).slice(0, 24)}`;
 }

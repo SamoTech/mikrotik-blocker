@@ -84,14 +84,17 @@ function parseCommand(raw, line, sectionPath = '') {
 
   let path = sectionPath;
   let index = 0;
+  let explicitPath = false;
 
   if (tokens[0].startsWith('/')) {
+    explicitPath = true;
     const menu = [];
     while (index < tokens.length && !VERBS.has(tokens[index])) {
       menu.push(tokens[index]);
       index += 1;
     }
     path = menu.join(' ');
+    if (index === tokens.length) return null;
   }
 
   const verbToken = tokens[index];
@@ -172,7 +175,12 @@ function parse(text) {
         menu.push(tokens[i]);
         i += 1;
       }
-      currentSection = menu.join(' ');
+      if (i < tokens.length) currentSection = menu.join(' ');
+      else {
+        currentSection = menu.join(' ');
+        if (!sections.includes(currentSection)) sections.push(currentSection);
+        continue;
+      }
     }
 
     const parsed = parseCommand(command.raw, command.line, currentSection);

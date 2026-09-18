@@ -105,7 +105,7 @@ function normalize(parsed) {
     const originalPath = command.path || command.section || '/';
     const normalizedPath = canonicalPath(originalPath);
     const inferredKind = inferKind(originalPath);
-    const kind = inferredKind || command.kind || 'opaque';
+    const kind = inferredKind || 'opaque';
     const attrs = canonicalValue(command.attributes || command.attrs || {});
     const baseIdentity = inferredKind
       ? resourceIdentity(kind, attrs)

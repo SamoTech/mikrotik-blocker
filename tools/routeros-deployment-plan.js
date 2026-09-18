@@ -12,6 +12,22 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
+function fingerprintPlan(plan) {
+  const copy = JSON.parse(JSON.stringify(plan));
+  delete copy.integrity;
+  return sha256(JSON.stringify(canonicalValue(copy)));
+}
+
+function finalizePlan(plan) {
+  return Object.freeze({
+    ...plan,
+    integrity: {
+      algorithm: 'sha256',
+      fingerprint: fingerprintPlan(plan)
+    }
+  });
+}
+
 function createDeploymentPlan(changeSet, context = {}) {
   if (!changeSet || typeof changeSet !== 'object') {
     throw new TypeError('Change Set is required.');
@@ -19,7 +35,7 @@ function createDeploymentPlan(changeSet, context = {}) {
 
   const gate = validateChangeSet(changeSet, context);
   if (!gate.valid) {
-    return Object.freeze({
+    return finalizePlan({
       schema_version: SCHEMA_VERSION,
       deployment: {
         status: 'blocked',
@@ -32,10 +48,6 @@ function createDeploymentPlan(changeSet, context = {}) {
         router_connection: 'disabled'
       },
       gate,
-      integrity: {
-        algorithm: 'sha256',
-        fingerprint: sha256(JSON.stringify(canonicalValue({ gate, change_set_id: changeSet.change_set?.id || null })))
-      },
       read_only: true
     });
   }
@@ -49,7 +61,7 @@ function createDeploymentPlan(changeSet, context = {}) {
     : { valid: true, errors: [], checks: [] };
 
   if (!approvalValidation.valid || (changeSet.change_set?.requires_approval && approval?.approval?.status !== 'approved')) {
-    return Object.freeze({
+    return finalizePlan({
       schema_version: SCHEMA_VERSION,
       deployment: {
         status: 'blocked',
@@ -63,15 +75,11 @@ function createDeploymentPlan(changeSet, context = {}) {
       },
       gate,
       approval: approvalValidation,
-      integrity: {
-        algorithm: 'sha256',
-        fingerprint: sha256(JSON.stringify(canonicalValue({ gate, approvalValidation })))
-      },
       read_only: true
     });
   }
 
-  const plan = {
+  return finalizePlan({
     schema_version: SCHEMA_VERSION,
     deployment: {
       id: 'deployment-plan:' + sha256(JSON.stringify(canonicalValue({
@@ -94,14 +102,7 @@ function createDeploymentPlan(changeSet, context = {}) {
     },
     gate,
     read_only: true
-  };
-
-  plan.integrity = {
-    algorithm: 'sha256',
-    fingerprint: sha256(JSON.stringify(canonicalValue(plan)))
-  };
-
-  return Object.freeze(plan);
+  });
 }
 
 function validateDeploymentPlan(plan) {
@@ -115,13 +116,15 @@ function validateDeploymentPlan(plan) {
   if (plan?.deployment?.status === 'ready' && plan?.deployment?.execution_status !== 'not_started') {
     errors.push('Ready Deployment Plan cannot have started execution.');
   }
+  if (plan?.deployment?.status === 'blocked') {
+    if (plan?.deployment?.execution_status !== 'not_started') errors.push('Blocked Deployment Plan must not have started execution.');
+    if (plan?.deployment?.router_connection !== 'disabled') errors.push('Blocked Deployment Plan must keep router connection disabled.');
+  }
 
   if (plan?.integrity?.algorithm !== 'sha256' || typeof plan?.integrity?.fingerprint !== 'string') {
     errors.push('Deployment Plan integrity metadata is invalid.');
   } else {
-    const copy = JSON.parse(JSON.stringify(plan));
-    delete copy.integrity;
-    const actual = sha256(JSON.stringify(canonicalValue(copy)));
+    const actual = fingerprintPlan(plan);
     if (actual !== plan.integrity.fingerprint) errors.push('Deployment Plan fingerprint mismatch.');
   }
 

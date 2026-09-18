@@ -16,7 +16,7 @@ function sanitizeBaseUrl(value) {
   if (url.username || url.password) throw new Error('Router connection profiles must not contain embedded credentials.');
   if (url.search || url.hash) throw new Error('Router connection profile URL must not contain query or fragment.');
   url.pathname = url.pathname.replace(/\/+$/, '');
-  if (url.pathname && url.pathname !== '/rest') {
+  if (url.pathname && url.pathname !== '/' && url.pathname !== '/rest') {
     throw new Error('Router connection profile URL must use the router origin or /rest base path.');
   }
   return url.origin;

@@ -1,10 +1,12 @@
 'use strict';
 const assert=require('assert');
-const {createChangeSet,prepareRollback}=require('./routeros-change-set');
-const d={fingerprint:'fp',routeros:{major:7},actual:{fingerprint:'a'},summary:{},conflicts:[],changes:[
-{id:'a',type:'add',kind:'firewall.address-list',identity:'x',path:'/ip/firewall/address-list',risk:'review',requires_review:true,after:{attributes:{'.id':'*1'}},attribute_changes:[],order_change:null},
-{id:'b',type:'remove',kind:'firewall.filter',identity:'y',path:'/ip/firewall/filter',risk:'high',requires_review:true,before:{attributes:{'.id':'*2'}},attribute_changes:[],order_change:null}]};
+const {createChangeSet,prepareRollback,attachSnapshot}=require('./routeros-change-set');
+const {createSnapshot}=require('./routeros-snapshot');
+const d={fingerprint:'fp',routeros:{major:7},actual:{fingerprint:'a'},summary:{},conflicts:[],changes:[{id:'a',type:'add',kind:'firewall.address-list',identity:'x',path:'/ip/firewall/address-list',risk:'review',requires_review:true,after:{attributes:{'.id':'*1'}},attribute_changes:[],order_change:null},{id:'b',type:'remove',kind:'firewall.filter',identity:'y',path:'/ip/firewall/filter',risk:'high',requires_review:true,before:{attributes:{'.id':'*2'}},attribute_changes:[],order_change:null}]};
 const cs=createChangeSet(d);assert.strictEqual(cs.change_set.state,'draft');assert.strictEqual(cs.snapshot.required,true);assert.strictEqual(cs.risk.level,'high');
 const rb=prepareRollback(cs);assert.strictEqual(rb.rollback.prepared,true);assert.strictEqual(rb.rollback.artifact.reversible,true);assert.strictEqual(rb.rollback.artifact.commands.length,2);
+const model={fingerprint:'a',routeros:{major:7},source:{name:'fixture'},resources:[],diagnostics:[]};
+const attached=attachSnapshot(cs,createSnapshot(model));assert.strictEqual(attached.snapshot.captured,true);assert.strictEqual(attached.snapshot.validated,true);assert.strictEqual(cs.snapshot.captured,false);assert.notStrictEqual(attached.fingerprint,cs.fingerprint);
+assert.throws(()=>attachSnapshot(cs,createSnapshot({...model,fingerprint:'wrong'})),/Snapshot validation failed/);
 const blocked=createChangeSet({...d,conflicts:[{id:'c',type:'conflict'}]});assert.strictEqual(blocked.change_set.state,'blocked');assert.strictEqual(blocked.validation.valid,false);
 console.log('routeros-change-set.test.js: all tests passed');

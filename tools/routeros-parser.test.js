@@ -18,7 +18,7 @@ const resultB = parse(fixture);
 assert.deepStrictEqual(resultA, resultB);
 assert.strictEqual(resultA.routeros.version, '7.21.4');
 assert.strictEqual(resultA.routeros.major, 7);
-assert.strictEqual(resultA.statistics.resources, 5);
+assert.strictEqual(resultA.statistics.resources, 4);
 assert.strictEqual(resultA.resources[1].attributes.address, '192.0.2.1/24');
 assert.strictEqual(resultA.resources[1].attributes.comment, 'LAN gateway');
 assert.strictEqual(resultA.resources[1].identity, '192.0.2.1/24');

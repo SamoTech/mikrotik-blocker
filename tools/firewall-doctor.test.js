@@ -17,6 +17,8 @@ const ipv6Finding = result.findings.find(f => f.id === 'IPV6_COVERAGE');
 assert.strictEqual(ipv6Finding.provenance.knowledge_id, 'firewall.ipv6-coverage');
 assert.ok(ipv6Finding.provenance.source.url.includes('help.mikrotik.com'));
 assert.strictEqual(result.schema_version, '2.0');
+assert.ok(result.findings.every(f => f.check_id && f.rule_id && f.kind && f.status));
+assert.strictEqual(ipv6Finding.confidence, 'high');
 assert.strictEqual(result.engine.name, 'RouterOS Doctor');
 assert.ok(result.model.fingerprint);
 

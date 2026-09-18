@@ -116,7 +116,7 @@ function validateDeploymentPlan(plan) {
     errors.push('Deployment Plan integrity metadata is invalid.');
   } else {
     const copy = JSON.parse(JSON.stringify(plan));
-    copy.integrity.fingerprint = null;
+    delete copy.integrity;
     const actual = sha256(JSON.stringify(canonicalValue(copy)));
     if (actual !== plan.integrity.fingerprint) errors.push('Deployment Plan fingerprint mismatch.');
   }

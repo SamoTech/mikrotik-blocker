@@ -5,7 +5,9 @@ const assert = require('assert');
 const {
   sanitizeBaseUrl,
   requestReadOnly,
-  inspectRouter
+  inspectRouter,
+  discoverCapabilities,
+  retrieveSnapshot
 } = require('./routeros-rest-readonly');
 
 assert.strictEqual(sanitizeBaseUrl('https://192.0.2.1/').origin, 'https://192.0.2.1');
@@ -46,6 +48,24 @@ assert.deepStrictEqual(calls, [{
   url: 'https://192.0.2.1/rest/system/resource',
   method: 'GET'
 }]);
+
+
+const discovery = await discoverCapabilities({
+  baseUrl: 'https://192.0.2.1',
+  fetch: fakeFetch
+});
+assert.strictEqual(discovery.capabilities.discovered['system/package'], true);
+assert.strictEqual(discovery.capability_probe_count, 7);
+
+const snapshot = await retrieveSnapshot({
+  baseUrl: 'https://192.0.2.1',
+  fetch: fakeFetch
+}, ['system/resource', 'ip/firewall/filter']);
+assert.strictEqual(snapshot.mode, 'read-only');
+assert.strictEqual(snapshot.mutation_performed, false);
+assert.ok(typeof snapshot.content_fingerprint === 'string');
+assert.strictEqual(Object.keys(snapshot.resources).length, 2);
+assert.deepStrictEqual(snapshot.errors, []);
 
 await assert.rejects(
   () => requestReadOnly({

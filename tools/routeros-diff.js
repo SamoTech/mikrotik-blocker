@@ -13,6 +13,7 @@ const {
   canonicalValue,
   resourceIdentity,
   sha256,
+  canonicalPath,
 } = require('./routeros-semantic');
 
 const SECRET_KEYS = /(?:password|passwd|secret|private[-_]?key|passphrase|token|credential)/i;
@@ -61,7 +62,7 @@ function normalizeDesired(resources) {
     const identity = desiredIdentity({ kind, attributes });
     return {
       kind,
-      path: resource.path || null,
+      path: resource.path ? canonicalPath(resource.path) : null,
       identity,
       attributes,
       state,

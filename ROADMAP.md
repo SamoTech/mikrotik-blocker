@@ -3,7 +3,7 @@
 **Status:** Active source of truth  
 **Project:** `SamoTech/mikrotik-blocker`  
 **Product direction:** MikroTik Configuration Management System for RouterOS  
-**Last reviewed:** 2026-09-17
+**Last reviewed:** 2026-09-18
 
 > This document is the canonical development roadmap for the repository. If another roadmap, issue, README section, planning note, or conversation conflicts with this file, this file wins until it is explicitly updated.
 
@@ -295,8 +295,8 @@ Deliverables:
 - [x] Reviewable patch artifact foundation
 - [x] Rollback artifact foundation
 - [x] Structured Change Set object
-- [ ] Pre-change snapshot
-- [ ] Risk classification
+- [x] Pre-change snapshot
+- [x] Risk classification
 - [ ] Approval workflow
 - [ ] Dry-run integration
 - [ ] Safe Mode deployment workflow where applicable
@@ -645,12 +645,14 @@ The immediate sequence after this roadmap is established:
 5. Unified findings/provenance model
 6. Configuration Compiler / desired-state model
 7. Semantic configuration diff — COMPLETE
-8. Safe Change Set + rollback engine — NEXT
-9. Live REST/API connector
-10. Multi-router inventory
-11. Drift detection
-12. GitOps / Configuration as Code
-13. AI Configuration Copilot
+8. Safe Change Set + rollback engine — COMPLETE
+9. Pre-change snapshot + validation gate — COMPLETE
+10. Approval workflow + Safe Deployment Boundary — NEXT
+11. Live REST/API connector
+12. Multi-router inventory
+13. Drift detection
+14. GitOps / Configuration as Code
+15. AI Configuration Copilot
 
 Do not skip ahead to AI or fleet deployment while the configuration model, validation and safety foundations are incomplete.
 

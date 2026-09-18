@@ -1,5 +1,6 @@
 'use strict';
 
+(async () => {
 const assert = require('assert');
 const {
   sanitizeBaseUrl,
@@ -55,3 +56,4 @@ await assert.rejects(
 );
 
 console.log('routeros-rest-readonly.test.js: all tests passed');
+})().catch(error => { console.error(error); process.exitCode = 1; });

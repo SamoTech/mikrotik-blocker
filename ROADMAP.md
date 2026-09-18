@@ -5,7 +5,7 @@
 **Product direction:** MikroTik Configuration Management System for RouterOS  
 **Last reviewed:** 2026-09-18
 
-> Change control note: Approval artifacts, the non-executable Deployment Plan boundary, and the offline dry-run pipeline are now implemented and tested. Live router execution remains outside this phase.
+> Change control note: Approval artifacts, the non-executable Deployment Plan boundary, the offline dry-run pipeline, and the read-only connectivity safety boundary are implemented and tested. Live router execution remains outside this phase.
 
 > This document is the canonical development roadmap for the repository. If another roadmap, issue, README section, planning note, or conversation conflicts with this file, this file wins until it is explicitly updated.
 
@@ -339,13 +339,13 @@ Connectivity priorities:
 
 Deliverables:
 
-- [ ] Connection profiles
-- [ ] Credential isolation
+- [x] Connection profiles
+- [x] Credential isolation
 - [x] Read-only REST connector foundation
-- [ ] Capability discovery
+- [x] Capability discovery
 - [x] Read-only mode
-- [ ] Connection health checks
-- [ ] Snapshot retrieval
+- [x] Connection health checks
+- [x] Snapshot retrieval
 - [ ] Controlled write operations
 - [ ] Timeout/retry policy
 - [ ] Session safety
@@ -655,10 +655,12 @@ The immediate sequence after this roadmap is established:
 11. Dry-run integration — COMPLETE
 12. Post-change verification + rollback execution contract — FOUNDATION COMPLETE
 13. Live REST/API connector — READ-ONLY FOUNDATION COMPLETE
-14. Multi-router inventory
-15. Drift detection
-16. GitOps / Configuration as Code
-17. AI Configuration Copilot
+14. Connection profile + credential isolation — COMPLETE
+15. Connection health checks — COMPLETE
+16. Multi-router inventory
+17. Drift detection
+18. GitOps / Configuration as Code
+19. AI Configuration Copilot
 
 Do not skip ahead to AI or fleet deployment while the configuration model, validation and safety foundations are incomplete.
 

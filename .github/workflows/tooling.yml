@@ -6,6 +6,7 @@ on:
       - 'tools/**'
       - 'schemas/**'
       - 'cli/**'
+      - 'docs/knowledge-base/schemas/**'
   pull_request:
     paths:
       - 'tools/**'
@@ -20,6 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: node tools/finding-engine.test.js
       - run: node tools/firewall-doctor.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js

@@ -27,9 +27,8 @@ const absent = compile({
 assert.strictEqual(absent.validation.valid, true);
 assert.ok(absent.rsc.includes('remove [find .id="*1"]'));
 
-const invalid = compile({
+assert.throws(() => compile({
   resources: [{ kind: 'future.thing', path: '/future thing', attributes: {} }],
-});
-assert.strictEqual(invalid.validation.valid, false);
+}), /Unsupported desired-state resource kind/);
 
 console.log('routeros-compiler tests passed');

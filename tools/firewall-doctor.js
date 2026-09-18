@@ -92,11 +92,10 @@ function analyzeModel(model) {
   for (const rule of rules) {
     const a = rule.resource.attributes || {};
     const key = ['chain', 'src-address', 'dst-address', 'src-address-list', 'dst-address-list', 'protocol', 'dst-port', 'in-interface', 'out-interface'].map(k => `${k}=${a[k] || ''}`).join('&');
-    if (terminal.has(key)) findings.push(withKnowledge({ id: 'SHADOWED_RULE', severity: 'medium', title: 'Potentially shadowed duplicate rule', evidence: `Resource ${rule.resource.identity} repeats an earlier match signature at source line ${rule.resource.source.line || '?'}.`, fix: 'Review rule order and remove or intentionally reorder duplicate rules.' }, 'firewall.filter-order'));
+    if (terminal.has(key)) findings.push(withKnowledge({ id: 'SHADOWED_RULE', severity: 'medium', title: 'Potentially shadowed duplicate rule', evidence: `Resource ${rule.resource.identity} repeats an earlier match signature at source line ${rule.resource.line || '?'}.`, fix: 'Review rule order and remove or intentionally reorder duplicate rules.' }, 'firewall.filter-order'));
     if (a.action === 'drop' || a.action === 'reject') terminal.add(key);
   }
 
-  const severityRank = { critical: 4, high: 3, medium: 2, low: 1 };
   const normalizedFindings = sortFindings(findings.map(f => createFinding({\n    ...f,\n    engine: { name: 'RouterOS Doctor', model: model.schemaVersion },\n    routeros: model.routeros,\n  })));
 
   return {

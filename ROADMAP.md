@@ -258,21 +258,21 @@ Acceptance criteria:
 
 ### Phase 4 — Configuration Compiler
 
-**Status: PLANNED**
+**Status: IN PROGRESS**
 
 Goal: convert desired intent into validated RouterOS configuration.
 
 Deliverables:
 
-- [ ] Intent schema
-- [ ] Desired-state model
-- [ ] Policy schema
-- [ ] Configuration templates
-- [ ] RouterOS-aware compiler
+- [x] Intent schema foundation
+- [x] Desired-state model foundation
+- [x] Policy schema foundation
+- [x] Configuration templates foundation
+- [x] RouterOS-aware compiler foundation
 - [ ] RouterOS 6/7 compatibility validation
-- [ ] Dependency ordering
-- [ ] Idempotent generation
-- [ ] RSC generation
+- [x] Dependency ordering foundation
+- [x] Idempotent generation foundation
+- [x] RSC generation
 - [ ] Policy Manifest generation
 - [ ] Before/after diff
 - [ ] Conflict detection

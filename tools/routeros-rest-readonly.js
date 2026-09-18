@@ -1,9 +1,7 @@
 'use strict';
 
-/**
- * Read-only RouterOS REST connector foundation.
- * GET only; no mutation, arbitrary commands, or credential persistence.
- */
+const crypto = require('crypto');
+const { redactSecrets } = require('./routeros-snapshot');
 
 const SCHEMA_VERSION = '1.0.0';
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -13,6 +11,7 @@ function sanitizeBaseUrl(value) {
   if (typeof value !== 'string' || !value.trim()) throw new TypeError('Router URL is required.');
   const url = new URL(value);
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Router URL must use HTTP or HTTPS.');
+  if (url.username || url.password) throw new Error('Router URL must not contain embedded credentials.');
   url.pathname = url.pathname.replace(/\/+$/, '');
   url.search = '';
   url.hash = '';
@@ -45,7 +44,6 @@ async function requestReadOnly(options, path, requestOptions = {}) {
     let body = null;
     try { body = text ? JSON.parse(text) : null; } catch (_) { body = text; }
     if (!response.ok) throw new Error('RouterOS REST request failed with HTTP ' + response.status + '.');
-
     return { path: '/' + relative, status: response.status, data: normalizeResponse(body) };
   } catch (error) {
     if (error && error.name === 'AbortError') throw new Error('RouterOS REST request timed out.');
@@ -57,22 +55,11 @@ async function requestReadOnly(options, path, requestOptions = {}) {
 
 async function discoverCapabilities(options) {
   const inspection = await inspectRouter(options);
-  const probes = [
-    'system/package',
-    'interface',
-    'ip/address',
-    'ip/route',
-    'ip/firewall/filter',
-    'ip/firewall/nat',
-    'ip/service'
-  ];
+  const probes = ['system/package', 'interface', 'ip/address', 'ip/route', 'ip/firewall/filter', 'ip/firewall/nat', 'ip/service'];
   const results = {};
   for (const path of probes) {
-    try {
-      results[path] = await requestReadOnly(options, path);
-    } catch (error) {
-      results[path] = { path: '/' + path, status: null, data: [], error: error.message };
-    }
+    try { results[path] = await requestReadOnly(options, path); }
+    catch (error) { results[path] = { path: '/' + path, status: null, data: [], error: error.message }; }
   }
 
   const available = {};
@@ -80,18 +67,25 @@ async function discoverCapabilities(options) {
 
   return {
     ...inspection,
-    capabilities: {
-      ...inspection.capabilities,
-      discovered: available
-    },
+    capabilities: { ...inspection.capabilities, discovered: available },
     capability_probe_count: probes.length
   };
 }
 
+function fingerprintPayload(payload) {
+  return {
+    schema_version: payload.schema_version,
+    mode: payload.mode,
+    mutation_performed: payload.mutation_performed,
+    router_base_url: payload.router_base_url,
+    resources: redactSecrets(payload.resources),
+    errors: redactSecrets(payload.errors)
+  };
+}
+
 async function retrieveSnapshot(options, paths) {
-  if (!options || typeof options.fetch !== 'function') {
-    throw new TypeError('A fetch implementation is required.');
-  }
+  if (!options || typeof options.fetch !== 'function') throw new TypeError('A fetch implementation is required.');
+
   const selected = Array.isArray(paths) && paths.length
     ? paths
     : ['system/resource', 'system/package', 'interface', 'ip/address', 'ip/route',
@@ -100,11 +94,8 @@ async function retrieveSnapshot(options, paths) {
   const resources = {};
   const errors = [];
   for (const path of selected) {
-    try {
-      resources[path.replace(/^\/+/, '')] = await requestReadOnly(options, path);
-    } catch (error) {
-      errors.push({ path: '/' + String(path).replace(/^\/+/, ''), error: error.message });
-    }
+    try { resources[path.replace(/^\/+/, '')] = await requestReadOnly(options, path); }
+    catch (error) { errors.push({ path: '/' + String(path).replace(/^\/+/, ''), error: error.message }); }
   }
 
   const payload = {
@@ -113,14 +104,12 @@ async function retrieveSnapshot(options, paths) {
     mutation_performed: false,
     router_base_url: sanitizeBaseUrl(options.baseUrl).origin,
     captured_at: new Date().toISOString(),
-    resources,
-    errors
+    resources: redactSecrets(resources),
+    errors: redactSecrets(errors)
   };
 
-  const crypto = require('crypto');
-  payload.content_fingerprint = crypto
-    .createHash('sha256')
-    .update(JSON.stringify(payload), 'utf8')
+  payload.content_fingerprint = crypto.createHash('sha256')
+    .update(JSON.stringify(fingerprintPayload(payload)), 'utf8')
     .digest('hex');
 
   return payload;
@@ -143,22 +132,9 @@ async function inspectRouter(options) {
       version: typeof first.version === 'string' ? first.version : null,
       platform: typeof first.platform === 'string' ? first.platform : null
     },
-    capabilities: {
-      read_only: true,
-      rest_api: true,
-      write_operations: false,
-      arbitrary_commands: false
-    },
-    resources: { system_resource: resource.data }
+    capabilities: { read_only: true, rest_api: true, write_operations: false, arbitrary_commands: false },
+    resources: { system_resource: redactSecrets(resource.data) }
   };
 }
 
-module.exports = {
-  SCHEMA_VERSION,
-  READ_ONLY_METHODS,
-  sanitizeBaseUrl,
-  requestReadOnly,
-  inspectRouter,
-  discoverCapabilities,
-  retrieveSnapshot
-};
+module.exports = { SCHEMA_VERSION, READ_ONLY_METHODS, sanitizeBaseUrl, requestReadOnly, inspectRouter, discoverCapabilities, retrieveSnapshot };

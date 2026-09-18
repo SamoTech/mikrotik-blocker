@@ -16,7 +16,7 @@ function actual(resources) {
 const base = {
   kind: 'firewall.filter',
   path: '/ip/firewall/filter',
-  identity: 'firewall.filter:input-allow',
+  identity: 'firewall.filter:comment=Allow management',
   attributes: { chain: 'input', comment: 'Allow management', action: 'accept' },
   order: 1,
   status: 'recognized',
@@ -68,7 +68,7 @@ assert.strictEqual(removed.changes[0].risk, 'high');
 const orderedActual = {
   ...base,
   order: 1,
-  identity: 'firewall.filter:rule',
+  identity: 'firewall.filter:comment=Allow management',
 };
 const orderedDesired = {
   kind: 'firewall.filter',

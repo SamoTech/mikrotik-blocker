@@ -294,7 +294,7 @@ Deliverables:
 
 - [x] Reviewable patch artifact foundation
 - [x] Rollback artifact foundation
-- [ ] Structured Change Set object
+- [x] Structured Change Set object
 - [ ] Pre-change snapshot
 - [ ] Risk classification
 - [ ] Approval workflow

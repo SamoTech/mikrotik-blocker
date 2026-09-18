@@ -274,9 +274,9 @@ Deliverables:
 - [x] Idempotent generation foundation
 - [x] RSC generation
 - [ ] Policy Manifest generation
-- [ ] Before/after diff
-- [ ] Conflict detection
-- [ ] Dry-run support
+- [x] Before/after diff
+- [x] Conflict detection
+- [x] Dry-run support
 
 Acceptance criteria:
 
@@ -644,8 +644,8 @@ The immediate sequence after this roadmap is established:
 4. Expand Firewall Doctor into RouterOS Doctor
 5. Unified findings/provenance model
 6. Configuration Compiler / desired-state model
-7. Semantic configuration diff
-8. Safe Change Set + rollback engine
+7. Semantic configuration diff — COMPLETE
+8. Safe Change Set + rollback engine — NEXT
 9. Live REST/API connector
 10. Multi-router inventory
 11. Drift detection

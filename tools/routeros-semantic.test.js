@@ -10,7 +10,7 @@ set name="core-router"
 /ip address
 add address=192.0.2.1/24 interface=ether1
 /ip firewall filter
-add chain=input action=accept connection-state=established,related
+add chain=input action=accept connection-state=established,related comment="Allow management"
 /unknown/menu
 add foo=bar
 `;
@@ -33,7 +33,8 @@ assert.strictEqual(model.statistics.opaqueCount, 1);
 assert.strictEqual(model.resources.some(r => r.kind === 'opaque'), true);
 assert.strictEqual(model.resources.find(r => r.kind === 'firewall.filter').order, 2);
 assert.strictEqual(model.resources.find(r => r.kind === 'firewall.filter').originalPath, '/ip/firewall/filter');
-assert.strictEqual(resourceIdentity('interface', { name: 'ether1' }), 'interface:ether1');
+assert.strictEqual(resourceIdentity('interface', { name: 'ether1' }), 'interface:name=ether1');
+assert.strictEqual(resourceIdentity('firewall.filter', { chain: 'input', comment: 'Allow management', action: 'accept' }), 'firewall.filter:comment=Allow management');
 
 const reorderedAttributes = normalize(parse(exportText.replace(
   'add address=192.0.2.1/24 interface=ether1',

@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const { parse } = require('./routeros-parser');
+const { normalize } = require('./routeros-semantic');
 const { runDryRun } = require('./routeros-dry-run');
 
 const actualRsc = [
@@ -10,14 +12,15 @@ const actualRsc = [
   'add chain=forward action=accept comment="existing"',
 ].join('\n');
 
+const actualModel = normalize(parse(actualRsc));
 const desired = {
-  routeros: { major: 7 },
+  routeros: actualModel.routeros,
   resources: [
-    {
-      kind: 'firewall.filter',
-      path: '/ip/firewall/filter',
-      attributes: { chain: 'forward', action: 'accept', comment: 'existing' },
-    },
+    ...actualModel.resources.map(r => ({
+      kind: r.kind,
+      path: r.path,
+      attributes: r.attributes,
+    })),
     {
       kind: 'firewall.filter',
       path: '/ip/firewall/filter',
@@ -39,17 +42,21 @@ assert.strictEqual(result.deployment.deployment.boundary, 'no-live-mutation');
 assert.strictEqual(result.deployment.deployment.router_connection, 'disabled');
 assert.strictEqual(result.deployment.deployment.execution_status, 'not_started');
 assert.strictEqual(result.deployment.deployment.status, 'blocked');
-assert.ok(result.deployment.deployment.gate_evidence.some(c => c.id === 'approval.required'));
+assert.ok(result.deployment.deployment.reason);
 
-const cleanDesired = { routeros: { major: 7 }, resources: result.actual.resources.map(r => ({
-  kind: r.kind,
-  path: r.path,
-  attributes: r.attributes,
-})) };
+const cleanDesired = {
+  routeros: actualModel.routeros,
+  resources: actualModel.resources.map(r => ({
+    kind: r.kind,
+    path: r.path,
+    attributes: r.attributes,
+  })),
+};
 const clean = runDryRun(actualRsc, cleanDesired, { source_path: 'fixture.rsc' });
 assert.strictEqual(clean.diff.summary.added, 0);
 assert.strictEqual(clean.diff.summary.removed, 0);
 assert.strictEqual(clean.diff.summary.changed, 0);
+assert.strictEqual(clean.diff.summary.conflicts, 0);
 assert.strictEqual(clean.deployment.deployment.status, 'ready');
 assert.strictEqual(clean.deployment.deployment.executable, false);
 

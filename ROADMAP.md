@@ -5,6 +5,8 @@
 **Product direction:** MikroTik Configuration Management System for RouterOS  
 **Last reviewed:** 2026-09-18
 
+> Change control note: Approval artifacts, the non-executable Deployment Plan boundary, and the offline dry-run pipeline are now implemented and tested. Live router execution remains outside this phase.
+
 > This document is the canonical development roadmap for the repository. If another roadmap, issue, README section, planning note, or conversation conflicts with this file, this file wins until it is explicitly updated.
 
 ## 1. Product Mission
@@ -297,8 +299,9 @@ Deliverables:
 - [x] Structured Change Set object
 - [x] Pre-change snapshot
 - [x] Risk classification
-- [ ] Approval workflow
-- [ ] Dry-run integration
+- [x] Approval workflow
+- [x] Dry-run integration
+- [x] Safe Deployment Boundary / non-executable Deployment Plan
 - [ ] Safe Mode deployment workflow where applicable
 - [ ] Post-change verification
 - [ ] Automatic rollback trigger for failed verification
@@ -647,8 +650,10 @@ The immediate sequence after this roadmap is established:
 7. Semantic configuration diff — COMPLETE
 8. Safe Change Set + rollback engine — COMPLETE
 9. Pre-change snapshot + validation gate — COMPLETE
-10. Approval workflow + Safe Deployment Boundary — NEXT
-11. Live REST/API connector
+10. Approval workflow + Safe Deployment Boundary — COMPLETE
+11. Dry-run integration — COMPLETE
+12. Post-change verification + rollback execution contract
+13. Live REST/API connector
 12. Multi-router inventory
 13. Drift detection
 14. GitOps / Configuration as Code

@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('./routeros-parser');
 const { normalize } = require('./routeros-semantic');
+const { createFinding, attachProvenance, sortFindings, summarizeFindings } = require('./finding-engine');
 
 const KNOWLEDGE = new Map([
   ['firewall.filter-order', require('../docs/knowledge-base/records/firewall-filter-order.json')],
@@ -32,17 +33,8 @@ function knowledgeFor(id) {
 }
 
 function withKnowledge(finding, knowledgeId) {
-  const knowledge = knowledgeFor(knowledgeId);
-  if (!knowledge) return finding;
-  return {
-    ...finding,
-    provenance: {
-      knowledge_id: knowledge.id,
-      source: knowledge.source,
-      confidence: knowledge.confidence,
-      remediation: knowledge.remediation,
-    },
-  };
+  const normalized = createFinding(finding);
+  return attachProvenance(normalized, knowledgeFor(knowledgeId));
 }
 
 function analyzeModel(model) {
@@ -105,7 +97,7 @@ function analyzeModel(model) {
   }
 
   const severityRank = { critical: 4, high: 3, medium: 2, low: 1 };
-  findings.sort((a, b) => severityRank[b.severity] - severityRank[a.severity]);
+  const normalizedFindings = sortFindings(findings.map(f => createFinding({\n    ...f,\n    engine: { name: 'RouterOS Doctor', model: model.schemaVersion },\n    routeros: model.routeros,\n  })));
 
   return {
     schema_version: '2.0',
@@ -113,15 +105,11 @@ function analyzeModel(model) {
     routeros: model.routeros,
     source: model.source,
     summary: {
-      findings: findings.length,
-      critical: findings.filter(f => f.severity === 'critical').length,
-      high: findings.filter(f => f.severity === 'high').length,
-      medium: findings.filter(f => f.severity === 'medium').length,
-      low: findings.filter(f => f.severity === 'low').length,
+      ...summarizeFindings(normalizedFindings),
     },
     coverage: { ipv4: hasIPv4, ipv6: hasIPv6, ipv4_rules: ipv4Rules.length, ipv6_rules: ipv6Rules.length, ipv4_address_lists: ipv4Lists.length, ipv6_address_lists: ipv6Lists.length },
     model: { fingerprint: model.fingerprint, resources: model.statistics },
-    findings,
+    findings: normalizedFindings,
   };
 }
 

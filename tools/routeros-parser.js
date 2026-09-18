@@ -93,8 +93,19 @@ function parseCommand(raw, line, sectionPath = '') {
       menu.push(tokens[index]);
       index += 1;
     }
-    path = menu.join(' ');
-    if (index === tokens.length) return null;
+    if (index === tokens.length) {
+      const attrIndex = tokens.findIndex((token, tokenIndex) => tokenIndex > 0 && token.includes('='));
+      if (attrIndex > 1) {
+        const candidate = tokens[attrIndex - 1];
+        path = tokens.slice(0, attrIndex - 1).join(' ');
+        index = attrIndex - 1;
+      } else {
+        path = menu.join(' ');
+        return null;
+      }
+    } else {
+      path = menu.join(' ');
+    }
   }
 
   const verbToken = tokens[index];

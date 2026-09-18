@@ -63,6 +63,7 @@ function attachProvenance(finding, knowledge) {
   if (!knowledge) return normalized;
   return {
     ...normalized,
+    confidence: knowledge.confidence || normalized.confidence,
     provenance: {
       knowledge_id: knowledge.id,
       source: knowledge.source,

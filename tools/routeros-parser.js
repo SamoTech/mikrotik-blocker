@@ -78,23 +78,42 @@ function unquote(value) {
   return value;
 }
 
-function parseCommand(raw, line) {
+function parseCommand(raw, line, sectionPath = '') {
   const { tokens, unterminatedQuote } = tokenize(raw);
   if (!tokens.length) return null;
-  const first = tokens[0];
-  if (!first.startsWith('/')) {
-    return { kind: 'opaque', path: '', verb: 'unknown', line, attributes: {}, raw, identity: null, opaque: true,
-      diagnostic: { severity: 'warning', code: 'UNRECOGNIZED_COMMAND', message: 'Command does not start with a RouterOS menu path.', line } };
+
+  let path = sectionPath;
+  let index = 0;
+
+  if (tokens[0].startsWith('/')) {
+    const menu = [];
+    while (index < tokens.length && !VERBS.has(tokens[index])) {
+      menu.push(tokens[index]);
+      index += 1;
+    }
+    path = menu.join(' ');
   }
 
-  let path = first;
-  let index = 1;
-  if (tokens[1] && tokens[1].startsWith('=') && !tokens[1].includes(' ')) index = 1;
   const verbToken = tokens[index];
   const verb = VERBS.has(verbToken) ? verbToken : 'unknown';
+
   if (verb === 'unknown') {
-    return { kind: path.slice(1), path, verb, line, attributes: {}, raw, identity: null, opaque: true,
-      diagnostic: { severity: 'warning', code: 'UNKNOWN_VERB', message: `Unsupported or unrecognized command verb: ${verbToken || '(missing)'}`, line } };
+    return {
+      kind: path ? path.slice(1) : 'opaque',
+      path,
+      verb,
+      line,
+      attributes: {},
+      raw,
+      identity: null,
+      opaque: true,
+      diagnostic: {
+        severity: 'warning',
+        code: 'UNKNOWN_VERB',
+        message: `Unsupported or unrecognized command verb: ${verbToken || '(missing)'}`,
+        line
+      }
+    };
   }
 
   const attributes = {};
@@ -104,9 +123,21 @@ function parseCommand(raw, line) {
     const key = token.slice(0, eq);
     attributes[key] = unquote(token.slice(eq + 1));
   }
+
   const identity = attributes['.id'] || attributes.name || attributes['list'] || attributes['address'] || null;
-  return { kind: path.slice(1), path, verb, line, attributes, raw, identity, opaque: false,
-    diagnostic: unterminatedQuote ? { severity: 'error', code: 'UNTERMINATED_QUOTE', message: 'Unterminated quoted value.', line } : null };
+  return {
+    kind: path ? path.slice(1) : 'opaque',
+    path,
+    verb,
+    line,
+    attributes,
+    raw,
+    identity,
+    opaque: !path,
+    diagnostic: unterminatedQuote
+      ? { severity: 'error', code: 'UNTERMINATED_QUOTE', message: 'Unterminated quoted value.', line }
+      : null
+  };
 }
 
 function detectVersion(text) {
@@ -130,14 +161,34 @@ function parse(text) {
   const resources = [];
   const diagnostics = [];
   const sections = [];
+  let currentSection = '';
 
   for (const command of commands) {
-    const parsed = parseCommand(command.raw, command.line);
+    const { tokens } = tokenize(command.raw);
+    if (tokens[0] && tokens[0].startsWith('/')) {
+      const menu = [];
+      let i = 0;
+      while (i < tokens.length && !VERBS.has(tokens[i])) {
+        menu.push(tokens[i]);
+        i += 1;
+      }
+      currentSection = menu.join(' ');
+    }
+
+    const parsed = parseCommand(command.raw, command.line, currentSection);
     if (!parsed) continue;
     if (parsed.path && !sections.includes(parsed.path)) sections.push(parsed.path);
     if (parsed.diagnostic) diagnostics.push(parsed.diagnostic);
-    resources.push({ kind: parsed.kind, path: parsed.path, verb: parsed.verb, line: parsed.line,
-      attributes: parsed.attributes, raw: parsed.raw, identity: parsed.identity, opaque: parsed.opaque });
+    resources.push({
+      kind: parsed.kind,
+      path: parsed.path,
+      verb: parsed.verb,
+      line: parsed.line,
+      attributes: parsed.attributes,
+      raw: parsed.raw,
+      identity: parsed.identity,
+      opaque: parsed.opaque
+    });
   }
 
   return {
@@ -147,8 +198,12 @@ function parse(text) {
     inventory: { sections, resourceCount: resources.length },
     resources,
     diagnostics,
-    statistics: { commands: commands.length, resources: resources.length,
-      opaqueCommands: resources.filter(r => r.opaque).length, diagnostics: diagnostics.length }
+    statistics: {
+      commands: commands.length,
+      resources: resources.length,
+      opaqueCommands: resources.filter(r => r.opaque).length,
+      diagnostics: diagnostics.length
+    }
   };
 }
 
@@ -163,4 +218,4 @@ if (require.main === module) {
   process.exit(result.diagnostics.some(d => d.severity === 'error') ? 1 : 0);
 }
 
-module.exports = { parse, splitCommands, tokenize, detectVersion };
+module.exports = { parse, splitCommands, tokenize, detectVersion, parseCommand };

@@ -13,7 +13,10 @@ const {
 assert.strictEqual(sanitizeBaseUrl('https://192.0.2.1/').origin, 'https://192.0.2.1');
 assert.throws(() => sanitizeBaseUrl('ftp://192.0.2.1'), /HTTP or HTTPS/);
 assert.throws(() => sanitizeBaseUrl('https://user:pass@192.0.2.1'), /embedded credentials/);
-assert.throws(() => requestReadOnly({ baseUrl: 'https://192.0.2.1', fetch: async () => ({}) }, '../system/resource'), /path traversal/);
+await assert.rejects(
+  () => requestReadOnly({ baseUrl: 'https://192.0.2.1', fetch: async () => ({}) }, '../system/resource'),
+  /path traversal/
+);
 
 let calls = [];
 const fakeFetch = async (url, init) => {

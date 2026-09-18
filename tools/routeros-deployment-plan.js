@@ -27,7 +27,9 @@ function createDeploymentPlan(changeSet, context = {}) {
         boundary: 'no-live-mutation',
         reason: 'Validation Gate did not pass.',
         change_set_id: changeSet.change_set?.id || null,
-        change_set_fingerprint: changeSet.fingerprint || null
+        change_set_fingerprint: changeSet.fingerprint || null,
+        execution_status: 'not_started',
+        router_connection: 'disabled'
       },
       gate,
       integrity: {
@@ -55,7 +57,9 @@ function createDeploymentPlan(changeSet, context = {}) {
         boundary: 'no-live-mutation',
         reason: 'Human approval is missing or invalid.',
         change_set_id: changeSet.change_set?.id || null,
-        change_set_fingerprint: changeSet.fingerprint || null
+        change_set_fingerprint: changeSet.fingerprint || null,
+        execution_status: 'not_started',
+        router_connection: 'disabled'
       },
       gate,
       approval: approvalValidation,

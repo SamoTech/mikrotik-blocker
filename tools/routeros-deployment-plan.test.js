@@ -69,5 +69,8 @@ assert.strictEqual(validateDeploymentPlan(tampered).valid, false);
 const blocked = createDeploymentPlan(base, { routeros_major: 7 });
 assert.strictEqual(blocked.deployment.status, 'blocked');
 assert.strictEqual(blocked.deployment.executable, false);
+assert.strictEqual(blocked.deployment.execution_status, 'not_started');
+assert.strictEqual(blocked.deployment.router_connection, 'disabled');
+assert.strictEqual(validateDeploymentPlan(blocked).valid, true);
 
 console.log('routeros-deployment-plan.test.js: all tests passed');

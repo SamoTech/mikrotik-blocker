@@ -654,10 +654,10 @@ The immediate sequence after this roadmap is established:
 11. Dry-run integration — COMPLETE
 12. Post-change verification + rollback execution contract
 13. Live REST/API connector
-12. Multi-router inventory
-13. Drift detection
-14. GitOps / Configuration as Code
-15. AI Configuration Copilot
+14. Multi-router inventory
+15. Drift detection
+16. GitOps / Configuration as Code
+17. AI Configuration Copilot
 
 Do not skip ahead to AI or fleet deployment while the configuration model, validation and safety foundations are incomplete.
 

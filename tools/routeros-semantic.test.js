@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 const { parse } = require('./routeros-parser');
-const { normalize, inferKind, resourceIdentity } = require('./routeros-semantic');
+const { normalize, inferKind, resourceIdentity, canonicalPath } = require('./routeros-semantic');
 
 const exportText = `# RouterOS 7.16
 /system identity
@@ -18,7 +18,9 @@ add foo=bar
 const parsed = parse(exportText);
 const model = normalize(parsed);
 
+assert.strictEqual(canonicalPath('/ip firewall filter'), '/ip/firewall/filter');
 assert.strictEqual(inferKind('/ip/firewall/filter'), 'firewall.filter');
+assert.strictEqual(inferKind('/ip firewall filter'), 'firewall.filter');
 assert.strictEqual(inferKind('/ip/address'), 'ip.address');
 assert.strictEqual(inferKind('/does/not/exist'), null);
 assert.strictEqual(model.schemaVersion, '1.0.0');
@@ -30,6 +32,7 @@ assert.strictEqual(model.statistics.recognizedCount, 3);
 assert.strictEqual(model.statistics.opaqueCount, 1);
 assert.strictEqual(model.resources.some(r => r.kind === 'opaque'), true);
 assert.strictEqual(model.resources.find(r => r.kind === 'firewall.filter').order, 2);
+assert.strictEqual(model.resources.find(r => r.kind === 'firewall.filter').originalPath, '/ip/firewall/filter');
 assert.strictEqual(resourceIdentity('interface', { name: 'ether1' }), 'interface:ether1');
 
 const reorderedAttributes = normalize(parse(exportText.replace(

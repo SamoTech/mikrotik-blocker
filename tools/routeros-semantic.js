@@ -102,8 +102,9 @@ function normalize(parsed) {
   const identityCounts = new Map();
 
   entries.forEach((command, index) => {
-    const originalPath = command.path || command.section || '/';
-    const normalizedPath = canonicalPath(originalPath);
+    const rawPath = command.path || command.section || '/';
+    const originalPath = canonicalPath(rawPath);
+    const normalizedPath = originalPath;
     const inferredKind = inferKind(originalPath);
     const kind = inferredKind || 'opaque';
     const attrs = canonicalValue(command.attributes || command.attrs || {});

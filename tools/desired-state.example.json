@@ -1,0 +1,15 @@
+{
+  "routeros": { "major": 7 },
+  "resources": [
+    {
+      "kind": "firewall.address-list",
+      "path": "/ip firewall address-list",
+      "attributes": { "list": "blocked", "address": "192.0.2.10", "comment": "managed" }
+    },
+    {
+      "kind": "firewall.filter",
+      "path": "/ip firewall filter",
+      "attributes": { "chain": "forward", "action": "drop", "dst-address-list": "blocked", "comment": "managed block" }
+    }
+  ]
+}

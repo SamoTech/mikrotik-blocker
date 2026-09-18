@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamoTech/mikrotik-blocker/blob/main/docs/knowledge-base/schemas/finding.schema.json",
+  "title": "MikroTik Unified Finding",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["id", "check_id", "rule_id", "kind", "severity", "confidence", "title", "evidence", "resource_refs", "status"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "check_id": { "type": "string", "minLength": 1 },
+    "rule_id": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "minLength": 1 },
+    "severity": { "type": "string", "enum": ["informational", "low", "medium", "high", "critical"] },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "title": { "type": "string", "minLength": 1 },
+    "evidence": { "type": "string", "minLength": 1 },
+    "resource_refs": { "type": "array" },
+    "provenance": { "type": ["object", "null"] },
+    "remediation": { "type": ["object", "string", "null"] },
+    "status": { "type": "string", "enum": ["open", "review", "resolved", "suppressed"] },
+    "routeros": { "type": ["object", "null"] },
+    "engine": { "type": ["object", "null"] },
+    "fix": { "type": "string" }
+  }
+}

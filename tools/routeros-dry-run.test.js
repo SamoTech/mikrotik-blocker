@@ -1,8 +1,6 @@
 'use strict';
 
 const assert = require('assert');
-const { parse } = require('./routeros-parser');
-const { normalize } = require('./routeros-semantic');
 const { runDryRun } = require('./routeros-dry-run');
 
 const actualRsc = [

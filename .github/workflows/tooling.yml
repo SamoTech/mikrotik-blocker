@@ -22,6 +22,7 @@ jobs:
         with:
           node-version: 20
       - run: node tools/finding-engine.test.js
+      - run: node tools/routeros-compiler.test.js
       - run: node tools/firewall-doctor.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js

@@ -41,7 +41,7 @@ function assertDesiredState(desired) {
 function escapeValue(value) {
   const text = String(value);
   if (/^[A-Za-z0-9_./,:@+-]+$/.test(text)) return text;
-  return '"' + text.replace(/\/g, '\\').replace(/"/g, '\"') + '"';
+  return '"' + text.replace(/\\/g, '\\\\').replace(/"/g, '\\\"') + '"';
 }
 
 function renderAttributes(attributes = {}) {

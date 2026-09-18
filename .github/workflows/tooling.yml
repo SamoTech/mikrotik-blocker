@@ -33,13 +33,14 @@ jobs:
       - run: node tools/routeros-verification.test.js
       - run: node tools/routeros-rest-readonly.test.js
       - run: node tools/routeros-connection-profile.test.js
+      - run: node tools/routeros-connection-health.test.js
       - run: node tools/firewall-doctor.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js
       - run: node tools/routeros-semantic.test.js
       - run: node tools/validate-manifest.js tools/policy-manifest.example.json
       - run: node tools/routeros-parser.js tools/routeros-fixtures/routeros6-basic.rsc --json
-      - run: node tools/routeros-parser.js tools/routeros-fixtures/routeros7-basic.rsc --json
+      - run: node tools/routeros-parser.js tools/routeros7-basic.rsc --json
       - run: node cli/mikrotik-blocker.js model tools/routeros-fixtures/routeros7-basic.rsc --json
       - run: node cli/mikrotik-blocker.js inspect tools/routeros-fixtures/ipv4-only.rsc --json
       - run: node cli/mikrotik-blocker.js simulate tools/policy-manifest.example.json

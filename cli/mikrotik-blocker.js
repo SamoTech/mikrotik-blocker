@@ -8,12 +8,13 @@ const { parse } = require('../tools/routeros-parser');
 const { normalize } = require('../tools/routeros-semantic');
 const { validate } = require('../tools/validate-manifest');
 const { simulate } = require('../tools/policy-simulator');
+const { runDryRun } = require('../tools/routeros-dry-run');
 
 const args = process.argv.slice(2);
 const command = args[0];
 
 function usage() {
-  console.log(`MikroTik Configuration Manager CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  parse <router.rsc> [--json]      Parse raw RouterOS export\n  model <router.rsc> [--json]      Build semantic configuration model\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
+  console.log(`MikroTik Configuration Manager CLI\n\nCommands:\n  inspect <router.rsc> [--json]    Analyze a RouterOS export\n  parse <router.rsc> [--json]      Parse raw RouterOS export\n  model <router.rsc> [--json]      Build semantic configuration model\n  validate <router.rsc>            Analyze and fail on high/critical findings\n  manifest validate <file.json>   Validate a Policy Manifest\n  simulate <file.json>            Estimate policy scope and warnings\n  dry-run <actual.rsc> <desired.json> [--approval file.json] [--json]\n                                  Run the offline configuration safety pipeline\n  recipe search [term]             Search local recipe registry\n  recipe show <id>                 Show a recipe\n`);
 }
 
 function readRouter(file) {
@@ -54,6 +55,36 @@ if (command === 'manifest' && args[1] === 'validate') {
   const result = validate(JSON.parse(fs.readFileSync(file, 'utf8')));
   console.log(result.valid ? 'Policy manifest: valid' : `Policy manifest: invalid\n${result.errors.map(e => `- ${e}`).join('\n')}`);
   process.exit(result.valid ? 0 : 1);
+}
+
+if (command === 'dry-run') {
+  const actualFile = args[1];
+  const desiredFile = args[2];
+  if (!actualFile || !fs.existsSync(actualFile)) { console.error('RouterOS export file not found.'); process.exit(2); }
+  if (!desiredFile || !fs.existsSync(desiredFile)) { console.error('Desired-state file not found.'); process.exit(2); }
+  const approvalIndex = args.indexOf('--approval');
+  const approvalPath = approvalIndex >= 0 ? args[approvalIndex + 1] : null;
+  if (approvalIndex >= 0 && (!approvalPath || !fs.existsSync(approvalPath))) { console.error('Approval file not found.'); process.exit(2); }
+  try {
+    const result = runDryRun(fs.readFileSync(actualFile, 'utf8'), JSON.parse(fs.readFileSync(desiredFile, 'utf8')), {
+      source_path: actualFile,
+      approval: approvalPath,
+    });
+    console.log(args.includes('--json') ? JSON.stringify(result, null, 2) : JSON.stringify({
+      mode: result.mode,
+      mutation_performed: result.mutation_performed,
+      diff: result.diff.summary,
+      change_set_status: result.change_set.change_set.state,
+      approval_status: result.change_set.approval.status,
+      deployment_status: result.deployment.deployment.status,
+      executable: result.deployment.deployment.executable,
+      boundary: result.deployment.deployment.boundary,
+    }, null, 2));
+    process.exit(result.deployment.deployment.status === 'blocked' ? 1 : 0);
+  } catch (error) {
+    console.error('Dry-run error: ' + error.message);
+    process.exit(1);
+  }
 }
 
 if (command === 'simulate') {

@@ -25,6 +25,9 @@ jobs:
       - run: node tools/routeros-compiler.test.js
       - run: node tools/routeros-diff.test.js
       - run: node tools/routeros-change-set.test.js
+      - run: node tools/routeros-snapshot.test.js
+      - run: node tools/routeros-validation-gate.test.js
+      - run: node tools/routeros-approval.test.js
       - run: node tools/firewall-doctor.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js

@@ -14,7 +14,7 @@ const KIND_MAP = [
   [/^\/system\/resource$/, 'system.resource'],
   [/^\/system\/package$/, 'system.package'],
   [/^\/system\/clock$/, 'system.clock'],
-  [/^\/system\/ntp(\s|$)/, 'system.ntp'],
+  [/^\/system\/ntp(?:\/|$)/, 'system.ntp'],
   [/^\/system\/script$/, 'system.script'],
   [/^\/system\/scheduler$/, 'system.scheduler'],
   [/^\/interface(?:\/|$)/, 'interface'],
@@ -61,8 +61,13 @@ function canonicalValue(value) {
   return value;
 }
 
+function canonicalPath(value) {
+  return String(value || '/').trim().replace(/\s+/g, '/');
+}
+
 function inferKind(path) {
-  for (const [pattern, kind] of KIND_MAP) if (pattern.test(path)) return kind;
+  const normalizedPath = canonicalPath(path);
+  for (const [pattern, kind] of KIND_MAP) if (pattern.test(normalizedPath)) return kind;
   return null;
 }
 
@@ -76,7 +81,6 @@ function resourceIdentity(kind, attrs) {
 function normalize(parsed) {
   if (!parsed || typeof parsed !== 'object') throw new TypeError('Parser result is required');
 
-  // routeros-parser exposes parsed resources; commands is accepted for forward compatibility.
   const entries = Array.isArray(parsed.resources)
     ? parsed.resources
     : Array.isArray(parsed.commands)
@@ -89,8 +93,9 @@ function normalize(parsed) {
   const identityCounts = new Map();
 
   entries.forEach((command, index) => {
-    const path = command.path || command.section || '/';
-    const inferredKind = inferKind(path);
+    const originalPath = command.path || command.section || '/';
+    const normalizedPath = canonicalPath(originalPath);
+    const inferredKind = inferKind(originalPath);
     const kind = inferredKind || command.kind || 'opaque';
     const attrs = canonicalValue(command.attributes || command.attrs || {});
     const baseIdentity = inferredKind
@@ -109,7 +114,8 @@ function normalize(parsed) {
 
     const resource = {
       kind,
-      path,
+      path: normalizedPath,
+      originalPath,
       identity,
       attributes: attrs,
       source,
@@ -149,4 +155,4 @@ function normalize(parsed) {
   return semantic;
 }
 
-module.exports = { normalize, inferKind, resourceIdentity, canonicalValue, sha256 };
+module.exports = { normalize, inferKind, resourceIdentity, canonicalValue, canonicalPath, sha256 };

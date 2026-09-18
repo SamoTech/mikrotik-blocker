@@ -326,7 +326,7 @@ No direct mutation path should bypass this lifecycle without an explicit low-lev
 
 ### Phase 6 — Live Router Connectivity
 
-**Status: PLANNED**
+**Status: IN PROGRESS — READ-ONLY FOUNDATION**
 
 Goal: connect the configuration engine to real routers safely.
 
@@ -341,8 +341,9 @@ Deliverables:
 
 - [ ] Connection profiles
 - [ ] Credential isolation
+- [x] Read-only REST connector foundation
 - [ ] Capability discovery
-- [ ] Read-only mode
+- [x] Read-only mode
 - [ ] Connection health checks
 - [ ] Snapshot retrieval
 - [ ] Controlled write operations
@@ -653,7 +654,7 @@ The immediate sequence after this roadmap is established:
 10. Approval workflow + Safe Deployment Boundary — COMPLETE
 11. Dry-run integration — COMPLETE
 12. Post-change verification + rollback execution contract — FOUNDATION COMPLETE
-13. Live REST/API connector
+13. Live REST/API connector — READ-ONLY FOUNDATION COMPLETE
 14. Multi-router inventory
 15. Drift detection
 16. GitOps / Configuration as Code

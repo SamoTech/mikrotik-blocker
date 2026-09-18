@@ -25,7 +25,7 @@ const diff = {
 };
 
 const base = createChangeSet(diff);
-const snapshot = createSnapshot({ routeros: { major: 7 }, resources: [] }, {
+const snapshot = createSnapshot({ fingerprint: 'actual-test', routeros: { major: 7 }, resources: [], diagnostics: [] }, {
   semantic_fingerprint: base.target.actual_fingerprint,
   source: { type: 'rsc-export' }
 });

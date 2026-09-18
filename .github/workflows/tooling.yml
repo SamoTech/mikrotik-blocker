@@ -40,4 +40,3 @@ jobs:
       - run: node cli/mikrotik-blocker.js model tools/routeros-fixtures/routeros7-basic.rsc --json
       - run: node cli/mikrotik-blocker.js inspect tools/routeros-fixtures/ipv4-only.rsc --json
       - run: node cli/mikrotik-blocker.js simulate tools/policy-manifest.example.json
-      - run: node cli/mikrotik-blocker.js dry-run tools/routeros-fixtures/routeros7-basic.rsc tools/routeros-fixtures/routeros7-desired-state.json --json

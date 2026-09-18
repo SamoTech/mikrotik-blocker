@@ -188,9 +188,13 @@ function parse(text) {
       }
       if (i < tokens.length) currentSection = menu.join(' ');
       else {
-        currentSection = menu.join(' ');
-        if (!sections.includes(currentSection)) sections.push(currentSection);
-        continue;
+        const attrIndex = tokens.findIndex((token, tokenIndex) => tokenIndex > 0 && token.includes('='));
+        const hasUnknownVerb = attrIndex > 1;
+        if (!hasUnknownVerb) {
+          currentSection = menu.join(' ');
+          if (!sections.includes(currentSection)) sections.push(currentSection);
+          continue;
+        }
       }
     }
 

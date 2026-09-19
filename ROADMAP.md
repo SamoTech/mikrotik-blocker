@@ -368,8 +368,8 @@ Goal: manage a fleet rather than a single router.
 
 Deliverables:
 
-- [ ] Router inventory
-- [ ] Tags/groups/sites
+- [x] Router inventory foundation
+- [x] Tags/groups/sites foundation
 - [ ] Fleet health dashboard
 - [ ] Configuration snapshots
 - [ ] Fleet-wide audit
@@ -378,7 +378,8 @@ Deliverables:
 - [ ] Deployment batches
 - [ ] Failure isolation
 - [ ] Fleet rollback
-- [ ] Router capability matrix
+- [x] Router capability matrix foundation
+- [x] Deterministic inventory ↔ capability binding
 - [ ] Version distribution
 
 Acceptance criteria:
@@ -657,7 +658,7 @@ The immediate sequence after this roadmap is established:
 13. Live REST/API connector — READ-ONLY FOUNDATION COMPLETE
 14. Connection profile + credential isolation — COMPLETE
 15. Connection health checks — COMPLETE
-16. Multi-router inventory
+16. Multi-router inventory — IN PROGRESS (inventory + capability foundation complete)
 17. Drift detection
 18. GitOps / Configuration as Code
 19. AI Configuration Copilot

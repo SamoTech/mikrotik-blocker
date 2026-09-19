@@ -14,6 +14,14 @@ function operationFingerprint(plan) {
   return crypto.createHash('sha256').update(JSON.stringify(canonicalValue(copy)), 'utf8').digest('hex');
 }
 
+function expectedExecution(targets) {
+  const completed = targets.filter(item => item.status === 'completed').map(item => item.router_id);
+  const failed = targets.filter(item => item.status === 'failed').map(item => item.router_id);
+  const skipped = targets.filter(item => item.status === 'skipped').map(item => item.router_id);
+  const status = failed.length ? 'partial_failure' : (completed.length === targets.length ? 'completed' : (completed.length || skipped.length ? 'in_progress' : 'planned'));
+  return { status, completed, failed, skipped };
+}
+
 function createFleetOperationPlan(fleet, options = {}) {
   const validation = validateFleetInventory(fleet);
   if (!validation.valid) throw new Error('Fleet inventory validation failed: ' + validation.errors.join(' '));
@@ -30,7 +38,7 @@ function createFleetOperationPlan(fleet, options = {}) {
     if (!(router.capability?.capabilities?.supported_operations || []).includes(operation)) throw new Error('Router does not support requested operation: ' + id + ' -> ' + operation);
     return { router_id: router.id, name: router.name, connection_profile_id: router.connection_profile_id, site: router.site, operation, capability_fingerprint: router.capability.fingerprint, status: 'pending' };
   }).sort((a, b) => a.router_id.localeCompare(b.router_id));
-  const plan = { schema_version: SCHEMA_VERSION, operation, fleet_fingerprint: fleet.fingerprint, read_only: true, mutation_enabled: false, targets, execution: { status: 'planned', completed: [], failed: [], skipped: [] }, fingerprint: null };
+  const plan = { schema_version: SCHEMA_VERSION, operation, fleet_fingerprint: fleet.fingerprint, read_only: true, mutation_enabled: false, targets, execution: expectedExecution(targets), fingerprint: null };
   plan.fingerprint = operationFingerprint(plan);
   return Object.freeze(plan);
 }
@@ -58,6 +66,7 @@ function validateFleetOperationPlan(plan, fleet) {
       if (target.operation !== plan.operation) errors.push('Operation target operation mismatch: ' + target.router_id);
       if (!['pending', ...TERMINAL_STATUSES].includes(target.status)) errors.push('Operation target status is invalid: ' + target.router_id);
     }
+    if (plan.execution && JSON.stringify(plan.execution) !== JSON.stringify(expectedExecution(plan.targets))) errors.push('Fleet operation execution state does not match target outcomes.');
   }
   if (plan && plan.fingerprint !== operationFingerprint(plan)) errors.push('Fleet operation plan fingerprint mismatch.');
   return { valid: errors.length === 0, errors };
@@ -70,12 +79,9 @@ function recordTargetOutcome(plan, routerId, status) {
   if (TERMINAL_STATUSES.has(target.status)) throw new Error('Terminal operation target outcome is immutable: ' + routerId);
   const next = JSON.parse(JSON.stringify(plan));
   next.targets.forEach(item => { if (item.router_id === routerId) item.status = status; });
-  next.execution.completed = next.targets.filter(item => item.status === 'completed').map(item => item.router_id);
-  next.execution.failed = next.targets.filter(item => item.status === 'failed').map(item => item.router_id);
-  next.execution.skipped = next.targets.filter(item => item.status === 'skipped').map(item => item.router_id);
-  next.execution.status = next.execution.failed.length ? 'partial_failure' : (next.execution.completed.length === next.targets.length ? 'completed' : 'in_progress');
+  next.execution = expectedExecution(next.targets);
   next.fingerprint = operationFingerprint(next);
   return next;
 }
 
-module.exports = { SCHEMA_VERSION, createFleetOperationPlan, validateFleetOperationPlan, recordTargetOutcome };
+module.exports = { SCHEMA_VERSION, createFleetOperationPlan, validateFleetOperationPlan, recordTargetOutcome, operationFingerprint };

@@ -37,6 +37,10 @@ const changed = { ...profile, timeout_ms: 9000 };
 assert.notStrictEqual(fingerprintConnectionProfile(profile), fingerprintConnectionProfile(changed));
 assert.strictEqual(validateConnectionProfile(changed).valid, false);
 
+const changedAuth = { ...profile, auth_reference: 'another-credential' };
+assert.notStrictEqual(fingerprintConnectionProfile(profile), fingerprintConnectionProfile(changedAuth));
+assert.strictEqual(validateConnectionProfile(changedAuth).valid, false);
+
 const withSecrets = { ...profile, password: 'super-secret', token: 'secret-token', private_key_material: 'PRIVATE' };
 const redacted = redactConnectionProfile(withSecrets);
 assert.strictEqual(JSON.stringify(redacted).includes('super-secret'), false);

@@ -34,7 +34,7 @@ function normalizeCapabilities(capabilities = {}) {
   if (!capabilities || typeof capabilities !== 'object' || Array.isArray(capabilities)) throw new TypeError('Router capabilities must be an object.');
   const supported = Array.isArray(capabilities.supported_operations)
     ? [...new Set(capabilities.supported_operations.map(value => normalizeString(value, 'Supported operations must contain strings.')))].sort()
-    : ['read', 'snapshot', 'audit'];
+    : [];
   for (const operation of supported) if (!ALLOWED_OPERATIONS.has(operation)) throw new Error('Unsupported inventory operation: ' + operation);
   const api = capabilities.api && typeof capabilities.api === 'object' ? { ...capabilities.api } : {};
   assertNoSecrets(api);
@@ -42,7 +42,7 @@ function normalizeCapabilities(capabilities = {}) {
     supported_operations: supported,
     rest: {
       available: api.rest_available === true,
-      readonly: api.rest_readonly !== false
+      readonly: api.rest_readonly === true
     },
     resources: Array.isArray(capabilities.resources)
       ? [...new Set(capabilities.resources.map(value => normalizeString(value, 'Capability resources must contain strings.')))].sort()

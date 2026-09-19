@@ -26,13 +26,16 @@ jobs:
       - run: node tools/routeros-diff.test.js
       - run: node tools/routeros-change-set.test.js
       - run: node tools/routeros-snapshot.test.js
+      - run: node tools/routeros-compatibility.test.js
       - run: node tools/routeros-validation-gate.test.js
       - run: node tools/routeros-approval.test.js
       - run: node tools/routeros-deployment-plan.test.js
       - run: node tools/routeros-dry-run.test.js
       - run: node tools/routeros-verification.test.js
-
       - run: node tools/routeros-rest-readonly.test.js
+      - run: node tools/routeros-connection-profile.test.js
+      - run: node tools/routeros-connection-health.test.js
+      - run: node tools/routeros-inventory.test.js
       - run: node tools/firewall-doctor.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js

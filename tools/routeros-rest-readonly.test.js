@@ -12,14 +12,15 @@ const {
 
 assert.strictEqual(sanitizeBaseUrl('https://192.0.2.1/').origin, 'https://192.0.2.1');
 assert.throws(() => sanitizeBaseUrl('ftp://192.0.2.1'), /HTTP or HTTPS/);
-assert.throws(() => requestReadOnly({
-  baseUrl: 'https://192.0.2.1',
-  fetch: async () => ({})
-}, '../system/resource'), /path traversal/);
+assert.throws(() => sanitizeBaseUrl('https://user:pass@192.0.2.1'), /embedded credentials/);
+await assert.rejects(
+  () => requestReadOnly({ baseUrl: 'https://192.0.2.1', fetch: async () => ({}) }, '../system/resource'),
+  /path traversal/
+);
 
 let calls = [];
 const fakeFetch = async (url, init) => {
-  calls.push({ url: String(url), method: init.method });
+  calls.push({ url: String(url), method: init.method, headers: init.headers });
   return {
     ok: true,
     status: 200,
@@ -28,51 +29,60 @@ const fakeFetch = async (url, init) => {
         'board-name': 'test-router',
         'architecture-name': 'arm64',
         version: '7.21.4',
-        platform: 'MikroTik'
+        platform: 'MikroTik',
+        password: 'super-secret',
+        api_token: 'do-not-persist'
       }]);
     }
   };
 };
 
-const result = await inspectRouter({
-  baseUrl: 'https://192.0.2.1',
-  fetch: fakeFetch
-});
+const options = { baseUrl: 'https://192.0.2.1', fetch: fakeFetch };
 
+const result = await inspectRouter(options);
 assert.strictEqual(result.mode, 'read-only');
 assert.strictEqual(result.mutation_performed, false);
 assert.strictEqual(result.capabilities.write_operations, false);
 assert.strictEqual(result.capabilities.arbitrary_commands, false);
 assert.strictEqual(result.router.version, '7.21.4');
-assert.deepStrictEqual(calls, [{
-  url: 'https://192.0.2.1/rest/system/resource',
-  method: 'GET'
-}]);
+assert.strictEqual(result.resources.system_resource[0].password, '[REDACTED]');
+assert.strictEqual(result.resources.system_resource[0].api_token, '[REDACTED]');
+assert.strictEqual(calls[0].url, 'https://192.0.2.1/rest/system/resource');
+assert.strictEqual(calls[0].method, 'GET');
+assert.strictEqual(calls[0].headers.Accept, 'application/json');
 
-
-const discovery = await discoverCapabilities({
-  baseUrl: 'https://192.0.2.1',
-  fetch: fakeFetch
-});
+const discovery = await discoverCapabilities(options);
 assert.strictEqual(discovery.capabilities.discovered['system/package'], true);
 assert.strictEqual(discovery.capability_probe_count, 7);
 
-const snapshot = await retrieveSnapshot({
-  baseUrl: 'https://192.0.2.1',
-  fetch: fakeFetch
-}, ['system/resource', 'ip/firewall/filter']);
+const snapshot = await retrieveSnapshot(options, ['system/resource', 'ip/firewall/filter']);
 assert.strictEqual(snapshot.mode, 'read-only');
 assert.strictEqual(snapshot.mutation_performed, false);
 assert.ok(typeof snapshot.content_fingerprint === 'string');
 assert.strictEqual(Object.keys(snapshot.resources).length, 2);
 assert.deepStrictEqual(snapshot.errors, []);
+assert.strictEqual(JSON.stringify(snapshot).includes('super-secret'), false);
+assert.strictEqual(JSON.stringify(snapshot).includes('do-not-persist'), false);
+
+const snapshot2 = await retrieveSnapshot(options, ['system/resource', 'ip/firewall/filter']);
+assert.strictEqual(snapshot.content_fingerprint, snapshot2.content_fingerprint);
 
 await assert.rejects(
-  () => requestReadOnly({
-    baseUrl: 'https://192.0.2.1',
-    fetch: fakeFetch
-  }, 'ip/firewall/filter', { method: 'DELETE' }),
+  () => requestReadOnly(options, 'ip/firewall/filter', { method: 'DELETE' }),
   /Only GET/
+);
+
+await assert.rejects(
+  () => requestReadOnly({ ...options, headers: { 'X-HTTP-Method-Override': 'DELETE' } }, 'ip/firewall/filter'),
+  /method override/i
+);
+await assert.rejects(
+  () => requestReadOnly({ ...options, headers: { 'X-HTTP-Method': 'POST' } }, 'ip/firewall/filter'),
+  /method override/i
+);
+await assert.rejects(
+  () => requestReadOnly({ ...options, headers: { 'X-Method-Override': 'PATCH' } }, 'ip/firewall/filter'),
+  /method override/i
 );
 
 console.log('routeros-rest-readonly.test.js: all tests passed');

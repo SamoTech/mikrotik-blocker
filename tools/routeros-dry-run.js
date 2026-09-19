@@ -36,6 +36,7 @@ function runDryRun(actualRsc, desiredState, options = {}) {
   }
 
   const deployment = createDeploymentPlan(changeSet, {
+    routeros_version: options.routeros_version ?? actual.routeros?.version ?? comparison.routeros?.version ?? null,
     routeros_major: options.routeros_major ?? actual.routeros?.major ?? comparison.routeros?.major,
   });
 

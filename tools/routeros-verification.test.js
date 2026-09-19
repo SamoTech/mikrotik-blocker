@@ -8,7 +8,7 @@ const { createVerificationPlan, validateVerificationPlan } = require('./routeros
 
 const diff = {
   fingerprint: 'diff-verification',
-  routeros: { major: 7 },
+  routeros: { version: '7.21.4', major: 7 },
   actual: { fingerprint: 'actual-verification' },
   summary: { added: 1, removed: 0, changed: 0, unchanged: 0, conflicts: 0 },
   conflicts: [],
@@ -22,12 +22,12 @@ const diff = {
 };
 let cs = createChangeSet(diff);
 cs = attachSnapshot(cs, createSnapshot({
-  fingerprint: 'actual-verification', routeros: { major: 7 }, resources: [], diagnostics: []
+  fingerprint: 'actual-verification', routeros: { version: '7.21.4', major: 7 }, resources: [], diagnostics: []
 }));
 cs = prepareRollback(cs);
 cs = attachApproval(cs, approve(createApproval(cs), 'operator@example.com'));
 
-const plan = createVerificationPlan(cs, { routeros_major: 7 });
+const plan = createVerificationPlan(cs, { routeros_version: '7.21.4', routeros_major: 7 });
 assert.strictEqual(plan.read_only, true);
 assert.strictEqual(plan.verification.status, 'not_started');
 assert.strictEqual(plan.verification.automatic_rollback, false);
@@ -40,7 +40,10 @@ const tampered = JSON.parse(JSON.stringify(plan));
 tampered.verification.execution.mutation_performed = true;
 assert.strictEqual(validateVerificationPlan(tampered).valid, false);
 
-const blocked = createVerificationPlan(createChangeSet({ ...diff, conflicts: [{ id: 'conflict-1' }] }), { routeros_major: 7 });
+const blocked = createVerificationPlan(
+  createChangeSet({ ...diff, conflicts: [{ id: 'conflict-1' }] }),
+  { routeros_version: '7.21.4', routeros_major: 7 }
+);
 assert.strictEqual(blocked.verification.status, 'blocked');
 
 console.log('routeros-verification.test.js: all tests passed');

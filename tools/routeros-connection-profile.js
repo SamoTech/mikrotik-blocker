@@ -31,6 +31,7 @@ function normalizeAuthReference(value) {
 function createConnectionProfile(options = {}) {
   const name = assertString(options.name, 'Connection profile name is required.');
   if (name.length > 120) throw new Error('Connection profile name is too long.');
+  if (options.id !== undefined) throw new Error('User-controlled connection profile IDs are forbidden.');
 
   const baseUrl = sanitizeBaseUrl(options.base_url);
   const authReference = normalizeAuthReference(options.auth_reference);
@@ -41,7 +42,7 @@ function createConnectionProfile(options = {}) {
 
   const profile = {
     schema_version: SCHEMA_VERSION,
-    id: options.id ? assertString(options.id, 'Connection profile id is invalid.') : crypto.randomUUID(),
+    id: crypto.randomUUID(),
     name,
     base_url: baseUrl,
     auth_reference: authReference,

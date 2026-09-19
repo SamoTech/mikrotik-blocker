@@ -35,6 +35,7 @@ jobs:
       - run: node tools/routeros-rest-readonly.test.js
       - run: node tools/routeros-connection-profile.test.js
       - run: node tools/routeros-connection-health.test.js
+      - run: node tools/routeros-inventory.test.js
       - run: node tools/firewall-doctor.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js

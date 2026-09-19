@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const { canonicalValue } = require('./routeros-semantic');
-const { normalizeRouter, stableRouterId } = require('./routeros-inventory');
+const { normalizeRouter, stableRouterId, assertNoSecrets } = require('./routeros-inventory');
 const { validateCapabilityRecord } = require('./routeros-capability-matrix');
 
 const SCHEMA_VERSION = '1.0.0';
@@ -33,6 +33,7 @@ function createFleetInventory(options = {}) {
     if (!validation.valid) throw new Error('Invalid router capability record: ' + validation.errors.join(' '));
     if (capability.router_id !== stableRouterId(input.connection_profile)) throw new Error('Capability router identity does not match its connection profile.');
     if (capability.connection_profile_id !== input.connection_profile.id) throw new Error('Capability connection profile does not match its router inventory profile.');
+    assertNoSecrets({ router, capability });
     return { ...router, capability };
   });
 
@@ -58,6 +59,7 @@ function validateFleetInventory(fleet) {
   const ids = new Set();
   if (Array.isArray(fleet?.routers)) {
     for (const router of fleet.routers) {
+      try { assertNoSecrets(router); } catch (error) { errors.push(error.message); }
       if (!router?.id || ids.has(router.id)) errors.push('Fleet router identities must be present and unique.');
       if (router?.id) ids.add(router.id);
       if (!router?.capability) {

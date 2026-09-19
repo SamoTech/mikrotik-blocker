@@ -374,9 +374,10 @@ Deliverables:
 - [ ] Configuration snapshots
 - [ ] Fleet-wide audit
 - [ ] Policy assignment
+- [x] Deterministic fleet operation targeting foundation
 - [ ] Staged deployment
 - [ ] Deployment batches
-- [ ] Failure isolation
+- [x] Failure isolation foundation
 - [ ] Fleet rollback
 - [x] Router capability matrix foundation
 - [x] Deterministic inventory ↔ capability binding
@@ -658,7 +659,7 @@ The immediate sequence after this roadmap is established:
 13. Live REST/API connector — READ-ONLY FOUNDATION COMPLETE
 14. Connection profile + credential isolation — COMPLETE
 15. Connection health checks — COMPLETE
-16. Multi-router inventory — IN PROGRESS (inventory + capability foundation complete)
+16. Multi-router inventory — IN PROGRESS (inventory + capability + target-isolation foundations complete)
 17. Drift detection
 18. GitOps / Configuration as Code
 19. AI Configuration Copilot

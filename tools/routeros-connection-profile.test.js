@@ -16,8 +16,14 @@ assert.throws(() => sanitizeBaseUrl('https://user:pass@192.0.2.1'), /embedded cr
 assert.throws(() => sanitizeBaseUrl('https://192.0.2.1/?x=1'), /query/);
 assert.throws(() => sanitizeBaseUrl('https://192.0.2.1/not-rest'), /origin or \/rest/);
 
-const profile = createConnectionProfile({
+assert.throws(() => createConnectionProfile({
   id: 'router-test',
+  name: 'Test Router',
+  base_url: 'https://192.0.2.1/rest/',
+  auth_reference: 'router-test-credential'
+}), /User-controlled connection profile IDs are forbidden/);
+
+const profile = createConnectionProfile({
   name: 'Test Router',
   base_url: 'https://192.0.2.1/rest/',
   auth_reference: 'router-test-credential',

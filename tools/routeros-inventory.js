@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const { canonicalValue } = require('./routeros-semantic');
+const { validateConnectionProfile } = require('./routeros-connection-profile');
 
 const SCHEMA_VERSION = '1.0.0';
 const SECRET_KEY_PATTERN = /(password|passwd|secret|private[-_]?key|passphrase|token|credential|authorization|cookie|api[-_]?key)/i;
@@ -12,10 +13,7 @@ function assertString(value, message) {
 }
 
 function stableRouterId(connectionProfile) {
-  const canonical = canonicalValue({
-    connection_profile_id: connectionProfile.id,
-    base_url: connectionProfile.base_url
-  });
+  const canonical = canonicalValue({ connection_profile_id: connectionProfile.id, base_url: connectionProfile.base_url });
   return 'router:' + crypto.createHash('sha256').update(JSON.stringify(canonical), 'utf8').digest('hex').slice(0, 20);
 }
 
@@ -32,9 +30,7 @@ function canonicalRouter(router) {
 }
 
 function fingerprintInventory(inventory) {
-  const routers = [...(inventory.routers || [])]
-    .map(canonicalRouter)
-    .sort((a, b) => a.id.localeCompare(b.id));
+  const routers = [...(inventory.routers || [])].map(canonicalRouter).sort((a, b) => a.id.localeCompare(b.id));
   return crypto.createHash('sha256')
     .update(JSON.stringify(canonicalValue({ schema_version: inventory.schema_version, routers })), 'utf8')
     .digest('hex');
@@ -56,15 +52,14 @@ function normalizeTags(tags) {
   return normalized.sort();
 }
 
+function requireReadOnlyProfile(profile) {
+  const validation = validateConnectionProfile(profile);
+  if (!validation.valid) throw new Error('Router inventory requires a valid read-only connection profile: ' + validation.errors.join(' '));
+}
+
 function createRouterInventory(options = {}) {
   if (options.id !== undefined) throw new Error('User-controlled inventory IDs are forbidden.');
-  const inventory = {
-    schema_version: SCHEMA_VERSION,
-    routers: [],
-    read_only: true,
-    mutation_enabled: false,
-    fingerprint: null
-  };
+  const inventory = { schema_version: SCHEMA_VERSION, routers: [], read_only: true, mutation_enabled: false, fingerprint: null };
   if (options.routers !== undefined) {
     if (!Array.isArray(options.routers)) throw new TypeError('Inventory routers must be an array.');
     for (const router of options.routers) inventory.routers.push(normalizeRouter(router));
@@ -75,14 +70,9 @@ function createRouterInventory(options = {}) {
 }
 
 function normalizeRouter(input = {}) {
-  if (!input.connection_profile || typeof input.connection_profile !== 'object') {
-    throw new TypeError('A validated connection profile is required.');
-  }
+  if (!input.connection_profile || typeof input.connection_profile !== 'object') throw new TypeError('A validated connection profile is required.');
   const profile = input.connection_profile;
-  if (!profile.id || !profile.base_url) throw new TypeError('Connection profile id and base_url are required.');
-  if (profile.credential_values_included !== false || profile.write_operations_enabled !== false || profile.mode !== 'read-only') {
-    throw new Error('Router inventory accepts only read-only connection profiles.');
-  }
+  requireReadOnlyProfile(profile);
 
   const router = {
     id: stableRouterId(profile),
@@ -127,12 +117,4 @@ function validateInventory(inventory) {
   return { valid: errors.length === 0, errors };
 }
 
-module.exports = {
-  SCHEMA_VERSION,
-  stableRouterId,
-  normalizeRouter,
-  createRouterInventory,
-  addRouter,
-  fingerprintInventory,
-  validateInventory
-};
+module.exports = { SCHEMA_VERSION, stableRouterId, normalizeRouter, createRouterInventory, addRouter, fingerprintInventory, validateInventory };

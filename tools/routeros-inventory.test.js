@@ -1,22 +1,15 @@
 'use strict';
 
 const assert = require('assert');
-const {
-  createRouterInventory,
-  addRouter,
-  fingerprintInventory,
-  validateInventory,
-  stableRouterId
-} = require('./routeros-inventory');
+const { createConnectionProfile } = require('./routeros-connection-profile');
+const { createRouterInventory, addRouter, validateInventory, stableRouterId } = require('./routeros-inventory');
 
-const profile = {
-  id: 'profile-1',
+const profile = createConnectionProfile({
   name: 'Core Router',
   base_url: 'https://router.example',
-  mode: 'read-only',
-  credential_values_included: false,
-  write_operations_enabled: false
-};
+  auth_reference: 'core-router-credential',
+  created_at: '2026-09-19T00:00:00.000Z'
+});
 
 const inventory = createRouterInventory({
   routers: [{
@@ -42,19 +35,21 @@ const reordered = createRouterInventory({
 });
 assert.strictEqual(reordered.fingerprint, inventory.fingerprint, 'Inventory fingerprint must be order-independent.');
 
-const changed = addRouter(inventory, {
-  connection_profile: { ...profile, id: 'profile-2', name: 'Branch Router', base_url: 'https://branch.example' },
-  site: 'Giza'
+const branchProfile = createConnectionProfile({
+  name: 'Branch Router',
+  base_url: 'https://branch.example',
+  auth_reference: 'branch-router-credential',
+  created_at: '2026-09-19T00:00:00.000Z'
 });
+const changed = addRouter(inventory, { connection_profile: branchProfile, site: 'Giza' });
 assert.notStrictEqual(changed.fingerprint, inventory.fingerprint);
 assert.strictEqual(validateInventory(changed).valid, true);
-assert.throws(() => addRouter(changed, {
-  connection_profile: { ...profile, id: 'profile-2', name: 'Branch Router', base_url: 'https://branch.example' }
-}), /already exists/);
+assert.throws(() => addRouter(changed, { connection_profile: branchProfile }), /already exists/);
 
 assert.throws(() => createRouterInventory({ id: 'attacker-controlled' }), /User-controlled inventory IDs are forbidden/);
-assert.throws(() => createRouterInventory({ routers: [{ connection_profile: { ...profile, write_operations_enabled: true } }] }), /read-only connection profiles/);
+assert.throws(() => createRouterInventory({ routers: [{ connection_profile: { ...profile, write_operations_enabled: true } }] }), /valid read-only connection profile/);
 assert.throws(() => createRouterInventory({ routers: [{ connection_profile: profile, metadata: { api_token: 'secret' } }] }), /Secret-bearing inventory field/);
+assert.throws(() => createRouterInventory({ routers: [{ connection_profile: { ...profile, fingerprint: 'tampered' } }] }), /valid read-only connection profile/);
 
 const tampered = JSON.parse(JSON.stringify(inventory));
 tampered.routers[0].site = 'Tampered';

@@ -93,13 +93,15 @@ assert.strictEqual(validateFleetSnapshot(writeEnabled, { fleet }).valid, false);
 assert.throws(() => createFleetSnapshot({ id: 'attacker', fleet, entries: [] }), /User-controlled fleet snapshot IDs/);
 assert.throws(() => createFleetSnapshot({ fingerprint: 'attacker', fleet, entries: [] }), /User-controlled fleet snapshot IDs/);
 assert.throws(() => createFleetSnapshot({ fleet, entries: [{ router_id: fleet.routers[0].id, status: 'captured', snapshot: coreSnapshot }] }), /exactly one outcome/);
-assert.throws(() => createFleetSnapshot({
+const redactedFailure = createFleetSnapshot({
   fleet,
   entries: [
-    { router_id: fleet.routers[0].id, status: 'failed', error: 'Authorization token leaked' },
+    { router_id: fleet.routers[0].id, status: 'failed', error: { api_token: 'must-not-persist' } },
     { router_id: fleet.routers[1].id, status: 'captured', snapshot: branchSnapshot }
   ]
-}), /Secret-bearing fleet snapshot field/);
+});
+assert.strictEqual(redactedFailure.entries.find(entry => entry.status === 'failed').error.api_token, '[REDACTED]');
+assert.strictEqual(validateFleetSnapshot(redactedFailure, { fleet }).valid, true);
 
 const failedIsolated = createFleetSnapshot({
   fleet,

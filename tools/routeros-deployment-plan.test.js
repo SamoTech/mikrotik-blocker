@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const { createChangeSet } = require('./routeros-change-set');
+const { createChangeSet, prepareRollback } = require('./routeros-change-set');
 const { createSnapshot } = require('./routeros-snapshot');
 const { createApproval, approve, attachApproval } = require('./routeros-approval');
 const { createDeploymentPlan, validateDeploymentPlan } = require('./routeros-deployment-plan');
@@ -17,7 +17,6 @@ const diff = {
     id: 'change-1', type: 'add', kind: 'firewall', identity: 'rule-1', path: '/ip/firewall/filter',
     requires_review: true, attribute_changes: [{ attribute: 'comment', before: null, after: 'managed' }]
   }],
-  conflicts: [],
 };
 
 const base = createChangeSet(diff);
@@ -25,7 +24,7 @@ const snapshot = createSnapshot({ fingerprint: 'actual-test', routeros: { versio
   semantic_fingerprint: base.target.actual_fingerprint, source: { type: 'rsc-export' }
 });
 const withSnapshot = { ...base, snapshot: { ...base.snapshot, captured: true, reference: snapshot, semantic_fingerprint: snapshot.snapshot.semantic_fingerprint, content_fingerprint: snapshot.snapshot.content_fingerprint, validated: true } };
-const prepared = { ...withSnapshot, rollback: { ...withSnapshot.rollback, required: false, prepared: true }, fingerprint: withSnapshot.fingerprint };
+const prepared = prepareRollback(withSnapshot);
 const approval = approve(createApproval(prepared), 'operator@example');
 const approved = attachApproval(prepared, approval);
 

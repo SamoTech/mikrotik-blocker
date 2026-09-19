@@ -63,6 +63,7 @@ function fingerprintConnectionProfile(profile) {
     id: profile.id,
     name: profile.name,
     base_url: profile.base_url,
+    auth_reference: profile.auth_reference,
     mode: profile.mode,
     tls_required: profile.tls_required,
     timeout_ms: profile.timeout_ms,

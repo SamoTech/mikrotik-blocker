@@ -3,7 +3,7 @@
 const assert = require('assert');
 const { createConnectionProfile } = require('./routeros-connection-profile');
 const { createCapabilityRecord } = require('./routeros-capability-matrix');
-const { createFleetInventory, validateFleetInventory } = require('./routeros-fleet-inventory');
+const { createFleetInventory, validateFleetInventory, fleetFingerprint } = require('./routeros-fleet-inventory');
 
 function profile(name, url) {
   return createConnectionProfile({ name, base_url: url, auth_reference: name.toLowerCase().replace(/\s+/g, '-'), created_at: '2026-09-19T00:00:00.000Z' });
@@ -57,6 +57,9 @@ assert.strictEqual(validateFleetInventory(crossTampered).valid, false);
 const secretBearing = JSON.parse(JSON.stringify(fleet));
 secretBearing.routers[0].metadata = { api_token: 'should-never-appear' };
 assert.strictEqual(validateFleetInventory(secretBearing).valid, false);
+secretBearing.fingerprint = fleetFingerprint(secretBearing);
+assert.strictEqual(validateFleetInventory(secretBearing).valid, false);
+assert.ok(validateFleetInventory(secretBearing).errors.some(error => /Secret-bearing inventory field/.test(error)));
 
 const writeEnabled = JSON.parse(JSON.stringify(fleet));
 writeEnabled.routers[0].capability.mutation_enabled = true;

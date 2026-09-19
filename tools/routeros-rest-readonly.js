@@ -6,6 +6,7 @@ const { redactSecrets } = require('./routeros-snapshot');
 const SCHEMA_VERSION = '1.0.0';
 const DEFAULT_TIMEOUT_MS = 5000;
 const READ_ONLY_METHODS = new Set(['GET']);
+const MUTATION_OVERRIDE_HEADERS = new Set(['x-http-method-override','x-http-method','x-method-override']);
 
 function sanitizeBaseUrl(value) {
   if (typeof value !== 'string' || !value.trim()) throw new TypeError('Router URL is required.');
@@ -38,7 +39,7 @@ async function requestReadOnly(options, path, requestOptions = {}) {
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs || DEFAULT_TIMEOUT_MS);
 
   try {
-    const headers = { Accept: 'application/json', ...(options.headers || {}) };
+    const headers = { Accept: 'application/json' };\n    for (const [key, value] of Object.entries(options.headers || {})) {\n      const normalized = String(key).toLowerCase();\n      if (MUTATION_OVERRIDE_HEADERS.has(normalized)) throw new Error('HTTP method override headers are forbidden by the read-only connector.');\n      headers[key] = value;\n    }
     const response = await options.fetch(url, { method, headers, signal: controller.signal });
     const text = await response.text();
     let body = null;

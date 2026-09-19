@@ -23,6 +23,7 @@ const approval = createApproval(withSnapshot, { requested_by: 'operator', reques
 assert.strictEqual(approval.approval.status, 'pending');
 assert.strictEqual(approval.approval.automatic_approval, false);
 assert.strictEqual(validateApproval(approval, { change_set_id: withSnapshot.change_set.id, change_set_fingerprint: withSnapshot.fingerprint }).valid, true);
+assert.throws(() => createApproval(withSnapshot, { id: 'spoofed' }), /User-controlled approval IDs are forbidden/);
 assert.throws(() => approve(approval), /Approver identity/);
 
 const approved = approve(approval, 'operator@example.invalid', '2026-09-18T10:05:00Z');

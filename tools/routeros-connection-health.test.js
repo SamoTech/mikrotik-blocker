@@ -5,7 +5,6 @@ const { createConnectionProfile } = require('./routeros-connection-profile');
 const { checkConnectionHealth } = require('./routeros-connection-health');
 
 const profile = createConnectionProfile({
-  id: 'health-test',
   name: 'Health Test Router',
   base_url: 'https://192.0.2.1',
   auth_reference: 'health-test-credential'

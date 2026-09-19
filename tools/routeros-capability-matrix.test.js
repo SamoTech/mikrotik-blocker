@@ -55,8 +55,8 @@ assert.throws(
 );
 assert.throws(() => normalizeVersion('RouterOS-seven'), /major.minor/);
 assert.deepStrictEqual(normalizeCapabilities({}), {
-  supported_operations: ['audit', 'read', 'snapshot'],
-  rest: { available: false, readonly: true },
+  supported_operations: [],
+  rest: { available: false, readonly: false },
   resources: []
 });
 

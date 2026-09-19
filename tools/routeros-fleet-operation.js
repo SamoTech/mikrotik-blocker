@@ -6,6 +6,7 @@ const { validateFleetInventory } = require('./routeros-fleet-inventory');
 
 const SCHEMA_VERSION = '1.0.0';
 const ALLOWED_OPERATIONS = new Set(['read', 'snapshot', 'audit']);
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'skipped']);
 
 function operationFingerprint(plan) {
   const copy = JSON.parse(JSON.stringify(plan));
@@ -54,6 +55,8 @@ function validateFleetOperationPlan(plan, fleet) {
       if (target.connection_profile_id !== router.connection_profile_id) errors.push('Operation target connection profile mismatch: ' + target.router_id);
       if (target.capability_fingerprint !== router.capability.fingerprint) errors.push('Operation target capability fingerprint mismatch: ' + target.router_id);
       if (!(router.capability.capabilities.supported_operations || []).includes(plan.operation)) errors.push('Operation target no longer supports requested operation: ' + target.router_id);
+      if (target.operation !== plan.operation) errors.push('Operation target operation mismatch: ' + target.router_id);
+      if (!['pending', ...TERMINAL_STATUSES].includes(target.status)) errors.push('Operation target status is invalid: ' + target.router_id);
     }
   }
   if (plan && plan.fingerprint !== operationFingerprint(plan)) errors.push('Fleet operation plan fingerprint mismatch.');
@@ -64,6 +67,7 @@ function recordTargetOutcome(plan, routerId, status) {
   if (!['completed', 'failed', 'skipped'].includes(status)) throw new Error('Unsupported target outcome: ' + status);
   const target = plan?.targets?.find(item => item.router_id === routerId);
   if (!target) throw new Error('Unknown operation target: ' + routerId);
+  if (TERMINAL_STATUSES.has(target.status)) throw new Error('Terminal operation target outcome is immutable: ' + routerId);
   const next = JSON.parse(JSON.stringify(plan));
   next.targets.forEach(item => { if (item.router_id === routerId) item.status = status; });
   next.execution.completed = next.targets.filter(item => item.status === 'completed').map(item => item.router_id);

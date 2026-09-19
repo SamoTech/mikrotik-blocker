@@ -4,7 +4,7 @@ const assert = require('assert');
 const { createConnectionProfile } = require('./routeros-connection-profile');
 const { createCapabilityRecord } = require('./routeros-capability-matrix');
 const { createFleetInventory } = require('./routeros-fleet-inventory');
-const { createFleetOperationPlan, validateFleetOperationPlan, recordTargetOutcome } = require('./routeros-fleet-operation');
+const { createFleetOperationPlan, validateFleetOperationPlan, recordTargetOutcome, operationFingerprint } = require('./routeros-fleet-operation');
 
 function profile(name, url) {
   return createConnectionProfile({ name, base_url: url, auth_reference: name.toLowerCase().replace(/\s+/g, '-'), created_at: '2026-09-19T00:00:00.000Z' });
@@ -33,6 +33,12 @@ assert.strictEqual(validateFleetOperationPlan(tampered, fleet).valid, false);
 const staleFleet = JSON.parse(JSON.stringify(fleet));
 staleFleet.routers[0].capability.capabilities.resources.push('system/package');
 assert.strictEqual(validateFleetOperationPlan(plan, staleFleet).valid, false);
+const executionTampered = JSON.parse(JSON.stringify(plan));
+executionTampered.execution.completed = [targetIds[0]];
+executionTampered.fingerprint = operationFingerprint(executionTampered);
+const executionValidation = validateFleetOperationPlan(executionTampered, fleet);
+assert.strictEqual(executionValidation.valid, false);
+assert.ok(executionValidation.errors.some(error => /execution state does not match target outcomes/.test(error)));
 const failed = recordTargetOutcome(plan, targetIds[0], 'failed');
 assert.strictEqual(failed.execution.status, 'partial_failure');
 assert.deepStrictEqual(failed.execution.failed, [targetIds[0]]);

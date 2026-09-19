@@ -41,6 +41,6 @@ assert.strictEqual(validateChangeSet(attached, { routeros_version: '7.21.4', rou
 
 const tampered = { ...attached, target: { ...attached.target, desired_fingerprint: 'tampered' } };
 assert.strictEqual(validateChangeSet(tampered, { routeros_version: '7.21.4', routeros_major: 7 }).valid, false);
-assert.throws(() => attachApproval(tampered, approved), /Approval validation failed/);
+assert.throws(() => attachApproval(tampered, approved), /Change Set fingerprint mismatch/);
 
 console.log('routeros-approval.test.js: all tests passed');

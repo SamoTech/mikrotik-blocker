@@ -117,4 +117,4 @@ function validateInventory(inventory) {
   return { valid: errors.length === 0, errors };
 }
 
-module.exports = { SCHEMA_VERSION, stableRouterId, normalizeRouter, createRouterInventory, addRouter, fingerprintInventory, validateInventory };
+module.exports = { SCHEMA_VERSION, stableRouterId, normalizeRouter, createRouterInventory, addRouter, fingerprintInventory, validateInventory, assertNoSecrets };

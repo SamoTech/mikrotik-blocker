@@ -20,7 +20,7 @@ await assert.rejects(
 
 let calls = [];
 const fakeFetch = async (url, init) => {
-  calls.push({ url: String(url), method: init.method });
+  calls.push({ url: String(url), method: init.method, headers: init.headers });
   return {
     ok: true,
     status: 200,
@@ -47,7 +47,9 @@ assert.strictEqual(result.capabilities.arbitrary_commands, false);
 assert.strictEqual(result.router.version, '7.21.4');
 assert.strictEqual(result.resources.system_resource[0].password, '[REDACTED]');
 assert.strictEqual(result.resources.system_resource[0].api_token, '[REDACTED]');
-assert.deepStrictEqual(calls, [{ url: 'https://192.0.2.1/rest/system/resource', method: 'GET' }]);
+assert.strictEqual(calls[0].url, 'https://192.0.2.1/rest/system/resource');
+assert.strictEqual(calls[0].method, 'GET');
+assert.strictEqual(calls[0].headers.Accept, 'application/json');
 
 const discovery = await discoverCapabilities(options);
 assert.strictEqual(discovery.capabilities.discovered['system/package'], true);
@@ -68,6 +70,19 @@ assert.strictEqual(snapshot.content_fingerprint, snapshot2.content_fingerprint);
 await assert.rejects(
   () => requestReadOnly(options, 'ip/firewall/filter', { method: 'DELETE' }),
   /Only GET/
+);
+
+await assert.rejects(
+  () => requestReadOnly({ ...options, headers: { 'X-HTTP-Method-Override': 'DELETE' } }, 'ip/firewall/filter'),
+  /method override/i
+);
+await assert.rejects(
+  () => requestReadOnly({ ...options, headers: { 'X-HTTP-Method': 'POST' } }, 'ip/firewall/filter'),
+  /method override/i
+);
+await assert.rejects(
+  () => requestReadOnly({ ...options, headers: { 'X-Method-Override': 'PATCH' } }, 'ip/firewall/filter'),
+  /method override/i
 );
 
 console.log('routeros-rest-readonly.test.js: all tests passed');

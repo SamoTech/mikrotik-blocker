@@ -73,7 +73,9 @@ assert.strictEqual(validateFleetSnapshot(partial, { fleet }).valid, false);
 assert.ok(validateFleetSnapshot(partial, { fleet }).errors.some(error => /exactly one outcome/.test(error)));
 
 const crossTampered = JSON.parse(JSON.stringify(fleetSnapshot));
-crossTampered.entries[0].connection_profile_id = branch.id;
+const originalProfile = crossTampered.entries[0].connection_profile_id;
+const otherProfile = fleet.routers.find(router => router.connection_profile_id !== originalProfile).connection_profile_id;
+crossTampered.entries[0].connection_profile_id = otherProfile;
 crossTampered.content_fingerprint = snapshotFingerprint(crossTampered);
 assert.strictEqual(validateFleetSnapshot(crossTampered, { fleet }).valid, false);
 

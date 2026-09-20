@@ -90,6 +90,11 @@ writeEnabled.mutation_enabled = true;
 writeEnabled.content_fingerprint = snapshotFingerprint(writeEnabled);
 assert.strictEqual(validateFleetSnapshot(writeEnabled, { fleet }).valid, false);
 
+const idTampered = JSON.parse(JSON.stringify(fleetSnapshot));
+idTampered.id = 'fleet-snapshot:attacker-controlled';
+assert.strictEqual(validateFleetSnapshot(idTampered, { fleet }).valid, false);
+assert.ok(validateFleetSnapshot(idTampered, { fleet }).errors.some(error => /Fleet snapshot ID mismatch/.test(error)));
+
 assert.throws(() => createFleetSnapshot({ id: 'attacker', fleet, entries: [] }), /User-controlled fleet snapshot IDs/);
 assert.throws(() => createFleetSnapshot({ fingerprint: 'attacker', fleet, entries: [] }), /User-controlled fleet snapshot IDs/);
 assert.throws(() => createFleetSnapshot({ fleet, entries: [{ router_id: fleet.routers[0].id, status: 'captured', snapshot: coreSnapshot }] }), /exactly one outcome/);

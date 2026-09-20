@@ -3,7 +3,7 @@
 **Status:** Active source of truth  
 **Project:** `SamoTech/mikrotik-blocker`  
 **Product direction:** MikroTik Configuration Management System for RouterOS  
-**Last reviewed:** 2026-09-18
+**Last reviewed:** 2026-09-20
 
 > Change control note: Approval artifacts, the non-executable Deployment Plan boundary, the offline dry-run pipeline, and the read-only connectivity safety boundary are implemented and tested. Live router execution remains outside this phase.
 
@@ -362,7 +362,7 @@ Security requirements:
 
 ### Phase 7 — Multi-Router Management
 
-**Status: PLANNED**
+**Status: IN PROGRESS — SNAPSHOT FOUNDATION**
 
 Goal: manage a fleet rather than a single router.
 
@@ -371,7 +371,7 @@ Deliverables:
 - [x] Router inventory foundation
 - [x] Tags/groups/sites foundation
 - [ ] Fleet health dashboard
-- [ ] Configuration snapshots
+- [x] Configuration snapshots foundation
 - [ ] Fleet-wide audit
 - [ ] Policy assignment
 - [x] Deterministic fleet operation targeting foundation
@@ -387,6 +387,8 @@ Acceptance criteria:
 
 - A failed router must not silently compromise the state of other routers.
 - Fleet operations must show exactly which routers will change before execution.
+- Fleet snapshots must cover every selected router with an explicit captured or failed outcome.
+- Fleet snapshot integrity must be deterministic, read-only and bound to the exact fleet inventory fingerprint.
 
 ### Phase 8 — Configuration Drift and Desired State
 
@@ -659,10 +661,11 @@ The immediate sequence after this roadmap is established:
 13. Live REST/API connector — READ-ONLY FOUNDATION COMPLETE
 14. Connection profile + credential isolation — COMPLETE
 15. Connection health checks — COMPLETE
-16. Multi-router inventory — IN PROGRESS (inventory + capability + target-isolation foundations complete)
-17. Drift detection
-18. GitOps / Configuration as Code
-19. AI Configuration Copilot
+16. Multi-router management — IN PROGRESS (inventory + capability + target-isolation + configuration-snapshot foundations complete)
+17. Fleet-wide audit
+18. Drift detection
+19. GitOps / Configuration as Code
+20. AI Configuration Copilot
 
 Do not skip ahead to AI or fleet deployment while the configuration model, validation and safety foundations are incomplete.
 

@@ -34,6 +34,17 @@ function canonicalEntries(snapshot) {
     .sort((a, b) => a.router_id.localeCompare(b.router_id));
 }
 
+function snapshotSeed(snapshot) {
+  return canonicalValue({
+    fleet_fingerprint: snapshot.fleet_fingerprint,
+    entries: canonicalEntries(snapshot)
+  });
+}
+
+function snapshotId(snapshot) {
+  return 'fleet-snapshot:' + crypto.createHash('sha256').update(JSON.stringify(snapshotSeed(snapshot)), 'utf8').digest('hex').slice(0, 20);
+}
+
 function snapshotFingerprint(snapshot) {
   const payload = canonicalValue({
     schema_version: snapshot.schema_version,
@@ -94,8 +105,7 @@ function createFleetSnapshot(options = {}) {
     mutation_enabled: false,
     content_fingerprint: null
   };
-  const seed = canonicalValue({ fleet_fingerprint: snapshot.fleet_fingerprint, entries: canonicalEntries(snapshot) });
-  snapshot.id = 'fleet-snapshot:' + crypto.createHash('sha256').update(JSON.stringify(seed), 'utf8').digest('hex').slice(0, 20);
+  snapshot.id = snapshotId(snapshot);
   snapshot.content_fingerprint = snapshotFingerprint(snapshot);
   return Object.freeze(snapshot);
 }
@@ -141,8 +151,9 @@ function validateFleetSnapshot(snapshot, expected = {}) {
     if (routers && seen.size !== routers.size) errors.push('Fleet snapshot must contain exactly one outcome for every fleet router.');
   }
 
+  if (snapshot.id !== snapshotId(snapshot)) errors.push('Fleet snapshot ID mismatch.');
   if (snapshot.content_fingerprint !== snapshotFingerprint(snapshot)) errors.push('Fleet snapshot content fingerprint mismatch.');
   return { valid: errors.length === 0, errors };
 }
 
-module.exports = { SCHEMA_VERSION, STATUSES, createFleetSnapshot, validateFleetSnapshot, snapshotFingerprint };
+module.exports = { SCHEMA_VERSION, STATUSES, createFleetSnapshot, validateFleetSnapshot, snapshotFingerprint, snapshotId };

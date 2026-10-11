@@ -13,8 +13,8 @@ This plan is additive. It does not supersede `ROADMAP.md` and does not claim tha
 
 ## Verified repository observations
 
-1. `ROADMAP.md` is explicitly the canonical project roadmap and still lists fleet-wide audit as in progress; open PR #7 proposes a deterministic read-only fleet audit.
-2. The open PR series includes #2 capability model, #3 inventory integration, #4 operation targeting, #5 fleet state integrity hardening, #6 configuration snapshots, and #7 fleet-wide audit. These are related incremental branches. Inspect and establish dependency order before merging; do not assume they can be merged arbitrarily.
+1. `ROADMAP.md` is explicitly the canonical project roadmap and lists fleet-wide audit as in progress; open PR #7 proposes a deterministic read-only fleet audit.
+2. PRs #2–#6 are already merged: capability model, inventory integration, operation targeting, fleet-state integrity hardening, and fleet snapshots. PR #7 is the remaining fleet-audit increment and should be evaluated against that integrated base.
 3. `.github/workflows/ci.yml` checks selected API JavaScript syntax and builds the frontend.
 4. `.github/workflows/tooling.yml` runs broad tests under `tools/` plus manifest/parser/CLI smoke checks, but its path filters do not visibly include every documentation/architecture contract path.
 5. The branch API response reported `main` as unprotected. Verify repository rulesets/branch protection in settings; this alone does not prove every possible repository policy is absent.
@@ -26,15 +26,13 @@ This plan is additive. It does not supersede `ROADMAP.md` and does not claim tha
 **Outcome:** `main` contains a coherent, test-backed fleet inventory → snapshot → audit chain.
 
 Tasks:
-- Fetch PR metadata and changed file lists for #2–#7.
-- Compare each branch base/head to current `main`, identify shared files/dependencies, and inspect each patch in full.
+- Verify that PRs #2–#6 are present in current `main` and inspect PR #7's full patch, current base/head SHAs, review state, exact-head workflow runs, and deployment status.
 - Run existing tests on each branch or a verified integration branch.
 - Verify capability records bind to exact router/profile identities and normalized RouterOS version.
 - Verify inventory fingerprints cover canonical inventory fields and cannot be supplied by callers.
 - Verify fleet snapshots cover every selected router exactly once with either a validated capture or sanitized failure.
 - Verify audit rejects missing/duplicate routers, mismatched snapshots, unknown/mismatched capabilities, secret-bearing fields and caller-forged IDs/fingerprints.
-- Merge in dependency order only after checks pass; resolve conflicts semantically.
-- Confirm final code exists on `main`, not only on feature branches.
+- Merge PR #7 only after all required checks pass, including any required deployment status. Confirm final code exists on `main`, not only on the feature branch.
 
 **Exit criteria:** main contains intended incremental capabilities, targeted tests pass on the final base commit, and fleet operations remain read-only.
 
@@ -116,4 +114,4 @@ Do not use raw block-list size or AI output volume as primary success metrics.
 
 ## Immediate next action
 
-Review the open fleet PR chain #2–#7 from earliest prerequisite through #7, validate each diff and CI run, then merge in dependency order. Do not jump to broad UI work, GitOps writeback or AI autonomy before this foundation is integrated and verified.
+Review PR #7 against the merged #2–#6 foundation, validate its exact-head tooling tests, and resolve the Vercel deployment status before merging. Do not bypass a failed required status or jump to broad UI work, GitOps writeback or AI autonomy before this foundation is integrated and verified.

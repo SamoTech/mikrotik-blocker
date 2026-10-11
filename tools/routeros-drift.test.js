@@ -94,4 +94,23 @@ secret.items.push({ id: 'leak', classification: 'unknown', evidence: { api_token
 assert.strictEqual(validateDriftReport(secret).valid, false);
 assert.throws(() => createDriftReport(snapshot, { ...desired, complete: false }), /complete: true/);
 
+const tamperedSnapshot = JSON.parse(JSON.stringify(snapshot));
+tamperedSnapshot.resources[0].attributes.action = 'drop';
+assert.throws(() => createDriftReport(tamperedSnapshot, desired), /Invalid actual snapshot/);
+
+const duplicateSnapshot = createSnapshot({
+  fingerprint: 'semantic-duplicate-001',
+  routeros: { major: 7, version: '7.21.4' },
+  source: { name: 'duplicate-fixture' },
+  resources: [{ ...resources[0], order: 0 }, { ...resources[0], order: 1 }],
+  diagnostics: [],
+}, { captured_at: '2026-10-11T10:05:00Z' });
+const duplicateReport = createDriftReport(duplicateSnapshot, {
+  schema_version: '1.0',
+  complete: true,
+  resources: [{ kind: 'firewall.filter', path: '/ip/firewall/filter', attributes: resources[0].attributes, order: 0 }],
+});
+assert.strictEqual(duplicateReport.summary.unknown, 1);
+assert.strictEqual(duplicateReport.items.some(item => item.classification === 'unknown'), true);
+
 console.log('routeros-drift.test.js: all tests passed');

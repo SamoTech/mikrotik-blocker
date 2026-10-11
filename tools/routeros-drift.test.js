@@ -86,6 +86,9 @@ assert.throws(() => createDriftReport(snapshot, desired, { id: 'caller-controlle
 const tampered = JSON.parse(JSON.stringify(report));
 tampered.summary.operational_drift = 99;
 assert.strictEqual(validateDriftReport(tampered).valid, false);
+const tamperedEvaluationTime = JSON.parse(JSON.stringify(report));
+tamperedEvaluationTime.evaluated_at = '2026-10-13T00:00:00Z';
+assert.strictEqual(validateDriftReport(tamperedEvaluationTime).valid, false);
 const secret = JSON.parse(JSON.stringify(report));
 secret.items.push({ id: 'leak', classification: 'unknown', evidence: { api_token: 'never persist' } });
 assert.strictEqual(validateDriftReport(secret).valid, false);

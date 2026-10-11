@@ -83,6 +83,7 @@ function fingerprintPayload(report) {
     schema_version: report.schema_version,
     snapshot_fingerprint: report.snapshot_fingerprint,
     desired_fingerprint: report.desired_fingerprint,
+    evaluated_at: report.evaluated_at,
     items: report.items,
     summary: report.summary,
     normalization: report.normalization,

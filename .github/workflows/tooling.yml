@@ -7,11 +7,15 @@ on:
       - 'schemas/**'
       - 'cli/**'
       - 'docs/knowledge-base/schemas/**'
+      - 'docs/architecture/**'
+      - 'ROADMAP.md'
   pull_request:
     paths:
       - 'tools/**'
       - 'schemas/**'
       - 'cli/**'
+      - 'docs/architecture/**'
+      - 'ROADMAP.md'
 
 jobs:
   test:
@@ -24,6 +28,7 @@ jobs:
       - run: node tools/finding-engine.test.js
       - run: node tools/routeros-compiler.test.js
       - run: node tools/routeros-diff.test.js
+      - run: node tools/routeros-drift.test.js
       - run: node tools/routeros-change-set.test.js
       - run: node tools/routeros-snapshot.test.js
       - run: node tools/routeros-fleet-snapshot.test.js

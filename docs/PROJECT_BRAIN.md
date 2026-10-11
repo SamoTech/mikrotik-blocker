@@ -202,12 +202,14 @@ Every iteration ends with one of: **MERGE**, **REVISE**, **DEFER**, or **BLOCK**
 
 ## 12. Immediate next work
 
-At this review date, prioritize:
-1. Complete review of PR #7; PRs #2–#6 are already merged. Merge #7 only after exact-head checks and all required deployment/status gates pass.
-2. Verify PR-head CI jobs and negative tests, especially fleet snapshot/audit integrity.
-3. After merge, ensure workflow coverage for all `tools/` integrity tests and schema/docs checks.
-4. Expand unified findings/provenance only after fleet audit is integrated.
-5. Keep live router mutation out of scope until a separate deployment-executor ADR, security review and lab-validation plan are accepted.
+PR #7 has merged as `b7f382149a6dde96053c9d9a3432761f5e21d2b7`; the fleet-audit implementation is present on `main`. Its pre-merge CI and Vercel checks passed, but the available workflow-run connector did not return post-merge runs, so a full post-merge suite is not claimed as verified.
+
+Prioritize:
+1. Land and validate the read-only semantic drift foundation using the existing snapshot validator and `tools/routeros-diff.js` rather than creating a parallel diff engine.
+2. Ensure tooling CI executes the drift test and runs when architecture contracts or `ROADMAP.md` change.
+3. Keep expected variances explicit, approved by reference, time-bounded, and visible in reports; preserve unknown states and security-relevant classifications.
+4. Next after this foundation: persist drift history and acknowledgments, then add scheduled snapshots/freshness reporting and alert integrations.
+5. Keep live router mutation and executable reconciliation out of scope until a separate executor ADR, security review and lab-validation plan are accepted.
 
 ## 13. Documentation map
 

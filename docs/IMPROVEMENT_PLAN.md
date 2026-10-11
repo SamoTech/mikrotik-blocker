@@ -7,16 +7,16 @@
 
 ## Executive assessment
 
-The project has a meaningful deterministic RouterOS configuration foundation. It is not yet appropriate to treat the larger multi-router management lifecycle as production-complete. The immediate risk is not lack of features; it is integrating the current fleet PR chain safely, verifying CI coverage, and preserving an enforceable read-only boundary while the feature surface expands.
+The project has a meaningful deterministic RouterOS configuration foundation. It is not yet appropriate to treat the larger multi-router management lifecycle as production-complete. The immediate risk is now keeping the merged fleet audit and emerging drift foundation verifiable through CI, while preserving an enforceable read-only boundary as the feature surface expands.
 
 This plan is additive. It does not supersede `ROADMAP.md` and does not claim that code has been tested or deployed by this document author.
 
 ## Verified repository observations
 
-1. `ROADMAP.md` is explicitly the canonical project roadmap and lists fleet-wide audit as in progress; open PR #7 proposes a deterministic read-only fleet audit.
-2. PRs #2–#6 are already merged: capability model, inventory integration, operation targeting, fleet-state integrity hardening, and fleet snapshots. PR #7 is the remaining fleet-audit increment and should be evaluated against that integrated base.
+1. `ROADMAP.md` is the canonical roadmap. PR #7 merged as `b7f382149a6dde96053c9d9a3432761f5e21d2b7`, adding the deterministic read-only fleet audit foundation.
+2. PRs #2–#7 are now merged. The fleet audit is a foundation only; broader audit rules and a dashboard remain incomplete.
 3. `.github/workflows/ci.yml` checks selected API JavaScript syntax and builds the frontend.
-4. `.github/workflows/tooling.yml` runs broad tests under `tools/` plus manifest/parser/CLI smoke checks, but its path filters do not visibly include every documentation/architecture contract path.
+4. `.github/workflows/tooling.yml` runs broad tests under `tools/` plus manifest/parser/CLI smoke checks. PR #8 adds `docs/architecture/**` and `ROADMAP.md` to its push/PR path filters; verify this coverage on `main` after merge.
 5. The branch API response reported `main` as unprotected. Verify repository rulesets/branch protection in settings; this alone does not prove every possible repository policy is absent.
 6. The repository contains both `api/` and `backend/` package surfaces. Ownership, production routing, authentication and responsibilities should be documented before consolidation.
 7. Existing contracts explicitly say the live REST connector is read-only and deployment plans are non-executable.
@@ -114,4 +114,4 @@ Do not use raw block-list size or AI output volume as primary success metrics.
 
 ## Immediate next action
 
-Review PR #7 against the merged #2–#6 foundation, validate its exact-head tooling tests, and resolve the Vercel deployment status before merging. Do not bypass a failed required status or jump to broad UI work, GitOps writeback or AI autonomy before this foundation is integrated and verified.
+Build a read-only semantic drift report on top of the existing validated snapshot and `tools/routeros-diff.js`, add deterministic/negative tests, and make tooling CI run that test plus architecture/roadmap-triggered checks. The merge commit's Vercel status is successful; the available connector did not return post-merge workflow runs, so the full post-merge test suite remains unverified. Do not bypass failed/pending checks or jump to GitOps writeback, live router writes, or AI autonomy.

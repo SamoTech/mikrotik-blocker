@@ -3,7 +3,7 @@
 **Status:** Active source of truth  
 **Project:** `SamoTech/mikrotik-blocker`  
 **Product direction:** MikroTik Configuration Management System for RouterOS  
-**Last reviewed:** 2026-09-20
+**Last reviewed:** 2026-10-11
 
 > Change control note: Approval artifacts, the non-executable Deployment Plan boundary, the offline dry-run pipeline, and the read-only connectivity safety boundary are implemented and tested. Live router execution remains outside this phase.
 
@@ -372,7 +372,7 @@ Deliverables:
 - [x] Tags/groups/sites foundation
 - [ ] Fleet health dashboard
 - [x] Configuration snapshots foundation
-- [ ] Fleet-wide audit
+- [x] Fleet-wide audit foundation (deterministic snapshot/inventory audit; broader audit rules and dashboard remain incomplete)
 - [ ] Policy assignment
 - [x] Deterministic fleet operation targeting foundation
 - [ ] Staged deployment
@@ -392,19 +392,19 @@ Acceptance criteria:
 
 ### Phase 8 — Configuration Drift and Desired State
 
-**Status: PLANNED**
+**Status: IN PROGRESS — READ-ONLY SEMANTIC DRIFT FOUNDATION**
 
 Goal: continuously detect divergence between intended and actual configuration.
 
 Deliverables:
 
-- [ ] Desired-state repository
-- [ ] Periodic snapshots
-- [ ] Semantic diff engine
-- [ ] Drift detection
-- [ ] Drift severity
+- [ ] Desired-state repository and persistence
+- [ ] Periodic snapshots and freshness/coverage reporting
+- [x] Semantic diff engine (shared deterministic diff reused by drift reporting)
+- [x] Read-only drift detection foundation
+- [x] Drift classification foundation (expected variance, unknown, operational, security-relevant)
 - [ ] Drift history
-- [ ] Accept/reject drift
+- [ ] Accept/reject drift and durable acknowledgments
 - [ ] Reconciliation plan
 - [ ] Alert integrations
 - [ ] Scheduled audits
@@ -662,8 +662,8 @@ The immediate sequence after this roadmap is established:
 14. Connection profile + credential isolation — COMPLETE
 15. Connection health checks — COMPLETE
 16. Multi-router management — IN PROGRESS (inventory + capability + target-isolation + configuration-snapshot foundations complete)
-17. Fleet-wide audit
-18. Drift detection
+17. Fleet-wide audit — FOUNDATION COMPLETE (broader audit rules/dashboard remain incomplete)
+18. Drift detection — READ-ONLY SEMANTIC FOUNDATION (history, scheduling, alerts and reconciliation workflow remain incomplete)
 19. GitOps / Configuration as Code
 20. AI Configuration Copilot
 

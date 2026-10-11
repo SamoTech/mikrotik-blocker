@@ -68,6 +68,11 @@ const withVariance = {
 };
 const expectedReport = createDriftReport(snapshot, withVariance, { evaluated_at: '2026-10-11T12:00:00Z' });
 assert.strictEqual(expectedReport.summary.expected_variance, 1);
+assert.deepStrictEqual(expectedReport.items.find(item => item.classification === 'expected_variance').expected_variance, {
+  reason: 'Approved maintenance window',
+  approval_ref: 'CHG-1042',
+  expires_at: '2026-10-12T00:00:00Z',
+});
 assert.strictEqual(expectedReport.summary.security_relevant_drift, 0);
 
 const expiredReport = createDriftReport(snapshot, withVariance, { evaluated_at: '2026-10-13T00:00:00Z' });

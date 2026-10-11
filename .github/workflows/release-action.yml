@@ -1,0 +1,137 @@
+name: Automated Firewall Doctor Releases
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'README.md'
+      - '.github/workflows/action-release-tag-smoke.yml'
+      - '.github/workflows/release-action.yml'
+      - 'tools/**'
+      - 'schemas/**'
+      - 'docs/knowledge-base/records/**'
+      - 'tests/action-consumer/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Calculate and validate the next release without publishing it
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firewall-doctor-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Test and publish Action release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test release planner
+        run: node tools/action-release-plan.test.js
+
+      - name: Test Firewall Doctor Action and analyzer
+        run: |
+          node tools/firewall-doctor-action.test.js
+          node tools/firewall-doctor.test.js
+          node tools/routeros-parser.test.js
+          node tools/routeros-semantic.test.js
+          node tools/finding-engine.test.js
+
+      - name: Smoke test release candidate against sanitized fixture
+        shell: bash
+        run: |
+          set -u
+          fixture="tests/action-consumer/routeros7-sanitized.rsc"
+          missing="tests/action-consumer/does-not-exist.rsc"
+
+          set +e
+          node tools/firewall-doctor-action.js "$fixture" false > "$RUNNER_TEMP/permissive.log" 2>&1
+          permissive_status=$?
+          node tools/firewall-doctor-action.js "$fixture" true > "$RUNNER_TEMP/strict.log" 2>&1
+          strict_status=$?
+          node tools/firewall-doctor-action.js "$missing" false > "$RUNNER_TEMP/missing.log" 2>&1
+          missing_status=$?
+          set -e
+
+          test "$permissive_status" -eq 0 || {
+            echo "Expected permissive mode to exit 0; got $permissive_status"
+            cat "$RUNNER_TEMP/permissive.log"
+            exit 1
+          }
+          test "$strict_status" -eq 1 || {
+            echo "Expected strict mode to exit 1; got $strict_status"
+            cat "$RUNNER_TEMP/strict.log"
+            exit 1
+          }
+          test "$missing_status" -eq 2 || {
+            echo "Expected missing input to exit 2; got $missing_status"
+            cat "$RUNNER_TEMP/missing.log"
+            exit 1
+          }
+          echo "Release-candidate smoke test passed: exit codes 0, 1, and 2 match the documented contract."
+
+      - name: Calculate semantic release plan
+        id: plan
+        shell: bash
+        run: |
+          plan="$(node tools/action-release-plan.js)"
+          echo "plan=$plan" >> "$GITHUB_OUTPUT"
+          PLAN_JSON="$plan" node -e '
+            const p = JSON.parse(process.env.PLAN_JSON);
+            if (p.release) {
+              console.log("Release plan: " + p.lastTag + " -> " + p.nextTag + " (" + p.bump + ")");
+              console.log("Release commits: " + p.commits.join("; "));
+            } else {
+              console.log("No release-worthy action commits found since " + p.lastTag + "; skipping publication.");
+            }
+          '
+
+      - name: Publish GitHub Release and semantic version tag
+        if: fromJSON(steps.plan.outputs.plan).release && (github.event_name == 'push' || inputs.dry_run == false)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_PLAN: ${{ steps.plan.outputs.plan }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$(node -e 'process.stdout.write(JSON.parse(process.env.RELEASE_PLAN).nextTag)')"
+          previous_tag="$(node -e 'process.stdout.write(JSON.parse(process.env.RELEASE_PLAN).lastTag)')"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Refusing to overwrite existing tag $tag."
+            exit 1
+          fi
+
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "MikroTik Firewall Doctor Action $tag" \
+            --generate-notes \
+            --notes-start-tag "$previous_tag"
+
+      - name: Report dry-run plan
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        env:
+          RELEASE_PLAN: ${{ steps.plan.outputs.plan }}
+        run: |
+          node -e '
+            const p = JSON.parse(process.env.RELEASE_PLAN);
+            console.log(p.release
+              ? "Dry run only: would publish " + p.nextTag + " from " + process.env.GITHUB_SHA + "."
+              : "Dry run complete: no release-worthy commits since " + p.lastTag + ".");
+          '

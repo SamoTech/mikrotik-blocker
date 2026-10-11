@@ -12,6 +12,16 @@ on:
       - 'schemas/**'
       - 'docs/knowledge-base/records/**'
       - 'tests/action-consumer/**'
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'README.md'
+      - '.github/workflows/action-release-tag-smoke.yml'
+      - '.github/workflows/release-action.yml'
+      - 'tools/**'
+      - 'schemas/**'
+      - 'docs/knowledge-base/records/**'
+      - 'tests/action-consumer/**'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -21,16 +31,18 @@ on:
         default: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: firewall-doctor-release
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Test and publish Action release
+  validate:
+    name: Validate release candidate
     runs-on: ubuntu-latest
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
     steps:
       - name: Check out full history and tags
         uses: actions/checkout@v4
@@ -102,11 +114,35 @@ jobs:
             }
           '
 
+      - name: Report dry-run plan
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        env:
+          RELEASE_PLAN: ${{ steps.plan.outputs.plan }}
+        run: |
+          node -e '
+            const p = JSON.parse(process.env.RELEASE_PLAN);
+            console.log(p.release
+              ? "Dry run only: would publish " + p.nextTag + " from " + process.env.GITHUB_SHA + "."
+              : "Dry run complete: no release-worthy commits since " + p.lastTag + ".");
+          '
+
+  publish:
+    name: Publish semantic tag and GitHub Release
+    needs: validate
+    if: needs.validate.result == 'success' && fromJSON(needs.validate.outputs.plan).release && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out target commit and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Publish GitHub Release and semantic version tag
-        if: fromJSON(steps.plan.outputs.plan).release && (github.event_name == 'push' || inputs.dry_run == false)
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_PLAN: ${{ steps.plan.outputs.plan }}
+          RELEASE_PLAN: ${{ needs.validate.outputs.plan }}
         shell: bash
         run: |
           set -euo pipefail
@@ -123,15 +159,3 @@ jobs:
             --title "MikroTik Firewall Doctor Action $tag" \
             --generate-notes \
             --notes-start-tag "$previous_tag"
-
-      - name: Report dry-run plan
-        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
-        env:
-          RELEASE_PLAN: ${{ steps.plan.outputs.plan }}
-        run: |
-          node -e '
-            const p = JSON.parse(process.env.RELEASE_PLAN);
-            console.log(p.release
-              ? "Dry run only: would publish " + p.nextTag + " from " + process.env.GITHUB_SHA + "."
-              : "Dry run complete: no release-worthy commits since " + p.lastTag + ".");
-          '

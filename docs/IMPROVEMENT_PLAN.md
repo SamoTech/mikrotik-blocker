@@ -16,7 +16,7 @@ This plan is additive. It does not supersede `ROADMAP.md` and does not claim tha
 1. `ROADMAP.md` is the canonical roadmap. PR #7 merged as `b7f382149a6dde96053c9d9a3432761f5e21d2b7`, adding the deterministic read-only fleet audit foundation.
 2. PRs #2–#7 are now merged. The fleet audit is a foundation only; broader audit rules and a dashboard remain incomplete.
 3. `.github/workflows/ci.yml` checks selected API JavaScript syntax and builds the frontend.
-4. `.github/workflows/tooling.yml` runs broad tests under `tools/` plus manifest/parser/CLI smoke checks, but its path filters do not visibly include every documentation/architecture contract path.
+4. `.github/workflows/tooling.yml` runs broad tests under `tools/` plus manifest/parser/CLI smoke checks. PR #8 adds `docs/architecture/**` and `ROADMAP.md` to its push/PR path filters; verify this coverage on `main` after merge.
 5. The branch API response reported `main` as unprotected. Verify repository rulesets/branch protection in settings; this alone does not prove every possible repository policy is absent.
 6. The repository contains both `api/` and `backend/` package surfaces. Ownership, production routing, authentication and responsibilities should be documented before consolidation.
 7. Existing contracts explicitly say the live REST connector is read-only and deployment plans are non-executable.

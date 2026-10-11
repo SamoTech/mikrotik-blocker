@@ -1,14 +1,14 @@
-name: MikroTik Blocker Firewall Doctor
-description: Analyze a RouterOS export for common firewall safety and correctness issues
+name: MikroTik Firewall Doctor
+description: Analyze a RouterOS export for common firewall safety and correctness issues without connecting to or modifying a router
 branding:
   icon: shield
   color: blue
 inputs:
   file:
-    description: Path to a RouterOS .rsc export
+    description: Path to a sanitized or approved RouterOS .rsc export in the checked-out workspace
     required: true
   fail-on-high:
-    description: Fail when high or critical findings are detected
+    description: Fail the workflow when critical or high findings are detected; operational errors always fail
     required: false
     default: 'true'
 runs:
@@ -20,7 +20,4 @@ runs:
         INPUT_FILE: ${{ inputs.file }}
         FAIL_ON_HIGH: ${{ inputs.fail-on-high }}
       run: |
-        node "$GITHUB_ACTION_PATH/tools/firewall-doctor.js" "$INPUT_FILE" || {
-          code=$?
-          if [ "$FAIL_ON_HIGH" = "true" ] && [ "$code" -eq 1 ]; then exit 1; fi
-        }
+        node "$GITHUB_ACTION_PATH/tools/firewall-doctor-action.js" "$INPUT_FILE" "$FAIL_ON_HIGH"

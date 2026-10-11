@@ -3,6 +3,8 @@ name: Configuration Tooling
 on:
   push:
     paths:
+      - 'action.yml'
+      - 'README.md'
       - 'tools/**'
       - 'schemas/**'
       - 'cli/**'
@@ -11,6 +13,8 @@ on:
       - 'ROADMAP.md'
   pull_request:
     paths:
+      - 'action.yml'
+      - 'README.md'
       - 'tools/**'
       - 'schemas/**'
       - 'cli/**'
@@ -44,6 +48,7 @@ jobs:
       - run: node tools/routeros-connection-health.test.js
       - run: node tools/routeros-inventory.test.js
       - run: node tools/firewall-doctor.test.js
+      - run: node tools/firewall-doctor-action.test.js
       - run: node tools/policy-simulator.test.js
       - run: node tools/routeros-parser.test.js
       - run: node tools/routeros-semantic.test.js

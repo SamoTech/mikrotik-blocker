@@ -121,6 +121,19 @@ The MikroTik Firewall Doctor Action analyzes a RouterOS export file (`.rsc`) in 
 
 The stable `v1.0.0` release is published. Pin the Action to that release tag, or use the full reviewed commit SHA for stronger supply-chain reproducibility.
 
+### Automated Action releases
+
+Future Action releases are created automatically by [`.github/workflows/release-action.yml`](./.github/workflows/release-action.yml) when a release-worthy Action change reaches `main`. The workflow runs the release-planner tests, Firewall Doctor regression tests, and a sanitized exit-code smoke matrix before creating a semantic version tag and GitHub Release. A failed validation blocks publication.
+
+Use these conventional commit prefixes for changes to the Action:
+
+- `fix(action): ...` or `perf(action): ...` — patch release (for example, `v1.0.1`).
+- `feat(action): ...` — minor release (for example, `v1.1.0`).
+- `feat(action)!: ...` or an Action-scoped commit with a `BREAKING CHANGE:` footer — major release.
+- Documentation-only, test-only, and unrelated commits do not create a release.
+
+The workflow uses the latest stable `vX.Y.Z` tag as its baseline, refuses to overwrite an existing tag, and generates release notes from the previous release. A manual `workflow_dispatch` defaults to dry-run mode; set `dry_run` to false only when you explicitly want to publish the calculated release.
+
 ```yaml
 name: RouterOS configuration audit
 

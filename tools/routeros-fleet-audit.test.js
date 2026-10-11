@@ -38,12 +38,15 @@ const fleet = createFleetInventory({ routers: [
   { connection_profile: core, name: 'Core', site: 'Cairo', tags: ['prod'], capability: coreCapability },
   { connection_profile: branch, name: 'Branch', site: 'Giza', tags: ['branch'], capability: branchCapability }
 ] });
+const coreRouter = fleet.routers.find(router => router.name === 'Core');
+const branchRouter = fleet.routers.find(router => router.name === 'Branch');
+assert.ok(coreRouter && branchRouter, 'Fleet inventory must retain named test routers.');
 
 const snapshot = createFleetSnapshot({
   fleet,
   entries: [
-    { router_id: fleet.routers[0].id, status: 'captured', snapshot: routerSnapshot('core-actual', 7, '2026-09-20T01:00:00Z') },
-    { router_id: fleet.routers[1].id, status: 'captured', snapshot: routerSnapshot('branch-actual', 6, '2026-09-20T01:00:01Z') }
+    { router_id: coreRouter.id, status: 'captured', snapshot: routerSnapshot('core-actual', 7, '2026-09-20T01:00:00Z') },
+    { router_id: branchRouter.id, status: 'captured', snapshot: routerSnapshot('branch-actual', 6, '2026-09-20T01:00:01Z') }
   ]
 });
 
@@ -60,8 +63,8 @@ assert.ok(report.findings.some(finding => finding.code === 'FLEET_MIXED_ROUTEROS
 const failedSnapshot = createFleetSnapshot({
   fleet,
   entries: [
-    { router_id: fleet.routers[0].id, status: 'failed', error: 'Connection timed out.' },
-    { router_id: fleet.routers[1].id, status: 'captured', snapshot: routerSnapshot('branch-actual', 6, '2026-09-20T01:00:01Z') }
+    { router_id: coreRouter.id, status: 'failed', error: 'Connection timed out.' },
+    { router_id: branchRouter.id, status: 'captured', snapshot: routerSnapshot('branch-actual', 6, '2026-09-20T01:00:01Z') }
   ]
 });
 const failedReport = createFleetAuditReport(failedSnapshot, fleet);
@@ -71,12 +74,12 @@ assert.strictEqual(failedReport.summary.failed, 1);
 const mismatchSnapshot = createFleetSnapshot({
   fleet,
   entries: [
-    { router_id: fleet.routers[0].id, status: 'captured', snapshot: routerSnapshot('core-actual', 6, '2026-09-20T01:00:00Z') },
-    { router_id: fleet.routers[1].id, status: 'captured', snapshot: routerSnapshot('branch-actual', 6, '2026-09-20T01:00:01Z') }
+    { router_id: coreRouter.id, status: 'captured', snapshot: routerSnapshot('core-actual', 6, '2026-09-20T01:00:00Z') },
+    { router_id: branchRouter.id, status: 'captured', snapshot: routerSnapshot('branch-actual', 6, '2026-09-20T01:00:01Z') }
   ]
 });
 const mismatchReport = createFleetAuditReport(mismatchSnapshot, fleet);
-assert.ok(mismatchReport.findings.some(finding => finding.code === 'FLEET_ROUTEROS_VERSION_MISMATCH' && finding.router_id === fleet.routers[0].id));
+assert.ok(mismatchReport.findings.some(finding => finding.code === 'FLEET_ROUTEROS_VERSION_MISMATCH' && finding.router_id === coreRouter.id));
 
 const tampered = JSON.parse(JSON.stringify(report));
 tampered.findings[0].evidence = 'tampered';

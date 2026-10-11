@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { mapFindingsExitCode, run } = require('./firewall-doctor-action');
+const { analyze, formatReport } = require('./firewall-doctor');
 
 assert.strictEqual(mapFindingsExitCode(false, true), 0);
 assert.strictEqual(mapFindingsExitCode(true, true), 1);
@@ -17,6 +18,11 @@ const acceptedRun = run(fixture, 'false');
 assert.strictEqual(acceptedRun, 0, 'high/critical findings should be non-blocking when fail-on-high=false');
 const gatedRun = run(fixture, 'true');
 assert.ok(gatedRun === 0 || gatedRun === 1, 'valid input should return a findings status, not an operational error');
+
+// Reports must not dump arbitrary export comments or unrelated configuration values.
+const sentinel = 'SECRET_SENTINEL_DO_NOT_LOG';
+const report = formatReport(analyze('/ip firewall filter\nadd chain=forward action=drop comment="' + sentinel + '"\n'));
+assert.ok(!report.includes(sentinel), 'report must not echo arbitrary export comments');
 
 const action = fs.readFileSync(path.join(__dirname, '..', 'action.yml'), 'utf8');
 const runner = fs.readFileSync(path.join(__dirname, 'firewall-doctor-action.js'), 'utf8');

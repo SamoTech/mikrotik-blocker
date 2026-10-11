@@ -71,8 +71,8 @@ The repository contains deterministic foundations for the configuration parser a
 
 Important distinctions:
 
-- Fleet-wide audit is proposed in open PR #7 and was not part of `main` at the time of this review.
-- Open PRs #2–#7 represent incremental branches in the fleet foundation and may depend on one another. Do not merge them blindly or treat branch-head features as production capabilities.
+- PRs #2–#6 are already merged and provide the capability, inventory, targeting, integrity, and fleet-snapshot prerequisites. PR #7 remains open and proposes fleet-wide audit; its branch-head feature is not part of `main` until merged.
+- Treat current PR #7 as the remaining fleet-audit increment. Recheck its current head SHA, exact-head CI/tooling results, Vercel status, and mergeability before any merge.
 - The repository has focused tooling tests in `tools/`; `.github/workflows/tooling.yml` invokes many of them. `.github/workflows/ci.yml` checks selected API syntax and builds the frontend. Verify actual workflow triggers and run results before claiming coverage for a PR.
 - The branch listing showed `main` as unprotected. Verify repository settings directly before assuming mandatory checks or review do or do not exist through other settings.
 - There are both `api/` and `backend/` Node projects. Establish ownership, deployment, authentication, CORS, secrets handling and parity before consolidating or adding endpoints.
@@ -99,7 +99,7 @@ This is an initial repository review, not a complete code audit. Inspect actual 
 7. Do not change required-check settings blindly; identify branch protection/rulesets and contexts first.
 
 ### Gate 2 — Complete the read-only fleet audit increment
-1. Review PR #7 in context of PRs #2–#6, not in isolation.
+1. Review PR #7 against the already-merged prerequisites from PRs #2–#6.
 2. Verify audit consumes only validated inventory and snapshots and is explicitly mutation-disabled.
 3. Verify complete router outcome coverage, canonical finding ordering, explicit partial failure, exact fingerprint binding, RouterOS capability/version checks and secret-field rejection.
 4. Test tampered IDs/fingerprints, omitted routers, duplicate routers, mismatched profiles, malformed nested snapshots, unknown capabilities and mixed RouterOS major versions.
@@ -203,7 +203,7 @@ Every iteration ends with one of: **MERGE**, **REVISE**, **DEFER**, or **BLOCK**
 ## 12. Immediate next work
 
 At this review date, prioritize:
-1. Review and integrate the open fleet PR chain in dependency order, beginning with capability/inventory prerequisites and ending at fleet audit; do not merge PR #7 before prerequisites are on the base.
+1. Complete review of PR #7; PRs #2–#6 are already merged. Merge #7 only after exact-head checks and all required deployment/status gates pass.
 2. Verify PR-head CI jobs and negative tests, especially fleet snapshot/audit integrity.
 3. After merge, ensure workflow coverage for all `tools/` integrity tests and schema/docs checks.
 4. Expand unified findings/provenance only after fleet audit is integrated.

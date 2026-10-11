@@ -119,7 +119,7 @@ The MikroTik Firewall Doctor Action analyzes a RouterOS export file (`.rsc`) in 
 
 ### Usage
 
-After a stable release is available, pin the Action to the release tag. For stronger supply-chain reproducibility, replace the tag with the full reviewed commit SHA.
+The stable `v1.0.0` release is published. Pin the Action to that release tag, or use the full reviewed commit SHA for stronger supply-chain reproducibility.
 
 ```yaml
 name: RouterOS configuration audit
@@ -147,7 +147,7 @@ jobs:
           fail-on-high: "true"
 ```
 
-The example assumes `router-config/routeros-export.rsc` exists in the checked-out consumer repository. The `v1.0.0` reference is a target release example; do not use it until that release has actually been published.
+The example assumes `router-config/routeros-export.rsc` exists in the checked-out consumer repository. Replace that path with the path to your own sanitized or approved export.
 
 ### Inputs
 

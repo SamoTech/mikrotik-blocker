@@ -1,0 +1,63 @@
+name: Firewall Doctor v1.0.0 Release Tag Smoke Test
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/action-release-tag-smoke.yml'
+      - 'tests/action-consumer/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consume-release-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sanitized consumer fixture
+        uses: actions/checkout@v4
+
+      - name: Run published v1.0.0 with findings allowed
+        id: permissive
+        uses: SamoTech/mikrotik-blocker@v1.0.0
+        with:
+          file: tests/action-consumer/routeros7-sanitized.rsc
+          fail-on-high: 'false'
+
+      - name: Run published v1.0.0 with high findings gated
+        id: strict
+        continue-on-error: true
+        uses: SamoTech/mikrotik-blocker@v1.0.0
+        with:
+          file: tests/action-consumer/routeros7-sanitized.rsc
+          fail-on-high: 'true'
+
+      - name: Run published v1.0.0 with missing input
+        id: missing
+        continue-on-error: true
+        uses: SamoTech/mikrotik-blocker@v1.0.0
+        with:
+          file: tests/action-consumer/does-not-exist.rsc
+          fail-on-high: 'false'
+
+      - name: Assert documented release behavior
+        if: always()
+        env:
+          PERMISSIVE_OUTCOME: ${{ steps.permissive.outcome }}
+          STRICT_OUTCOME: ${{ steps.strict.outcome }}
+          MISSING_OUTCOME: ${{ steps.missing.outcome }}
+        run: |
+          set -eu
+          test "$PERMISSIVE_OUTCOME" = "success" || {
+            echo "Expected fail-on-high=false to allow findings; got $PERMISSIVE_OUTCOME"
+            exit 1
+          }
+          test "$STRICT_OUTCOME" = "failure" || {
+            echo "Expected high-severity findings to fail with fail-on-high=true; got $STRICT_OUTCOME"
+            exit 1
+          }
+          test "$MISSING_OUTCOME" = "failure" || {
+            echo "Expected missing input to fail even when fail-on-high=false; got $MISSING_OUTCOME"
+            exit 1
+          }
+          echo "Published v1.0.0 smoke test passed: permissive findings, strict findings, and operational failure behave as documented."

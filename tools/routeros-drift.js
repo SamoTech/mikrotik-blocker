@@ -65,13 +65,16 @@ function validateDesiredState(desired) {
   return { valid: errors.length === 0, errors };
 }
 
-function classifyChange(change, expectedVariances, evaluatedAtMs) {
-  if (change.type === 'conflict' || change.kind === 'opaque') return 'unknown';
-  const variance = expectedVariances.find(item =>
+function matchingExpectedVariance(change, expectedVariances, evaluatedAtMs) {
+  return expectedVariances.find(item =>
     item.type === change.type && item.identity === change.identity &&
     Date.parse(item.expires_at) > evaluatedAtMs
-  );
-  if (variance) return 'expected_variance';
+  ) || null;
+}
+
+function classifyChange(change, expectedVariances, evaluatedAtMs) {
+  if (change.type === 'conflict' || change.kind === 'opaque') return 'unknown';
+  if (matchingExpectedVariance(change, expectedVariances, evaluatedAtMs)) return 'expected_variance';
   return SECURITY_SENSITIVE_KINDS.test(change.kind || '') ? 'security_relevant_drift' : 'operational_drift';
 }
 
@@ -126,17 +129,25 @@ function createDriftReport(snapshot, desired, options = {}) {
     fingerprint: snapshot.snapshot.semantic_fingerprint,
   };
   const semanticDiff = diff(actual, desired);
-  const changes = semanticDiff.changes.map(change => ({
-    ...change,
-    classification: classifyChange(change, variances, evaluatedAtMs),
-  }));
+  const changes = semanticDiff.changes.map(change => {
+    const variance = matchingExpectedVariance(change, variances, evaluatedAtMs);
+    return {
+      ...change,
+      classification: classifyChange(change, variances, evaluatedAtMs),
+      expected_variance: variance ? {
+        reason: variance.reason,
+        approval_ref: variance.approval_ref,
+        expires_at: variance.expires_at,
+      } : null,
+    };
+  });
   const conflicts = semanticDiff.conflicts.map(conflict => ({
     ...conflict,
     classification: 'unknown',
   }));
   const items = [...changes, ...conflicts].sort((a, b) => a.id.localeCompare(b.id));
   const summary = {
-    routerscope_resources: snapshot.resources.length,
+    actual_resources: snapshot.resources.length,
     desired_resources: desired.resources.length,
     total_items: items.length,
     expected_variance: items.filter(item => item.classification === 'expected_variance').length,

@@ -104,3 +104,74 @@ Generated changes must not silently mutate a production router. Operators should
 ## Contributing
 
 Start with `ROADMAP.md` before proposing or implementing a major feature. New configuration rules should include tests, RouterOS-version applicability and official MikroTik documentation provenance where available.
+
+
+## GitHub Action: Firewall Doctor
+
+The MikroTik Firewall Doctor Action analyzes a RouterOS export file (`.rsc`) in the GitHub Actions runner. It is an **offline analysis step**: it does not connect to a router, use router credentials, or apply configuration changes.
+
+### Prerequisites
+
+- A GitHub Actions runner with Node.js available (GitHub-hosted `ubuntu-latest` is the target).
+- A checked-out workspace containing a RouterOS `.rsc` export.
+- Use a sanitized fixture or approved configuration artifact. Router exports can contain usernames, public IP addresses, comments, keys, or other sensitive values; do not commit an unredacted production export to a public repository.
+- The workflow needs only `contents: read` for checkout. The Action itself does not require repository write permissions or router secrets.
+
+### Usage
+
+After a stable release is available, pin the Action to the release tag. For stronger supply-chain reproducibility, replace the tag with the full reviewed commit SHA.
+
+```yaml
+name: RouterOS configuration audit
+
+on:
+  pull_request:
+    paths:
+      - "router-config/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firewall-doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Analyze RouterOS export
+        uses: SamoTech/mikrotik-blocker@v1.0.0
+        with:
+          file: router-config/routeros-export.rsc
+          fail-on-high: "true"
+```
+
+The example assumes `router-config/routeros-export.rsc` exists in the checked-out consumer repository. The `v1.0.0` reference is a target release example; do not use it until that release has actually been published.
+
+### Inputs
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `file` | Yes | — | Path to a readable RouterOS `.rsc` export in the workspace. |
+| `fail-on-high` | No | `true` | When `true`, fail if critical or high-severity findings are present. When `false`, findings do not fail the job. Operational errors always fail. |
+
+### Outputs
+
+The Action declares no formal GitHub Actions outputs. It writes a human-readable report to the workflow log, including findings, evidence, remediation guidance and available provenance. Do not parse the human-readable log as a stable machine interface.
+
+### Exit and failure behavior
+
+- **Exit 0:** analysis completed and no blocking findings were detected, or findings were allowed by `fail-on-high: "false"`.
+- **Exit 1:** critical/high findings were detected and `fail-on-high: "true"`.
+- **Exit 2:** the input is missing, unreadable or invalid, or analysis encounters an operational/runtime failure.
+
+Lower-severity findings are reported but do not fail the job. A successful audit is not proof that a router configuration is secure; review the findings and validate the intended design.
+
+### Safety and data handling
+
+- The Action reads a local export file and analyzes it in the runner.
+- It does not open a RouterOS API/REST connection, invoke SSH, or apply firewall or other router configuration.
+- No router username, password, API token or router connection profile is required.
+- The report may include configuration-derived evidence. Use sanitized exports and restrict access to workflow logs when configuration details are sensitive.
+- The Action is not a deployment or remediation mechanism.

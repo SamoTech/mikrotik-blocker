@@ -41,7 +41,7 @@ function run(file, failOnHigh) {
     const hasHighOrCritical = Boolean(result.summary.high || result.summary.critical);
     return mapFindingsExitCode(hasHighOrCritical, failOnHigh === 'true');
   } catch (error) {
-    console.error(`Firewall Doctor Action: analysis failed (${error && error.message ? error.message : 'unknown error'}).`);
+    console.error('Firewall Doctor Action: analysis failed; details suppressed to avoid logging configuration-derived data.');
     return 2;
   }
 }

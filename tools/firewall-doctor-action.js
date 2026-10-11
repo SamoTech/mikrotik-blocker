@@ -1,16 +1,14 @@
 'use strict';
 
-// Thin, offline-only entry point for the composite GitHub Action.
-// Exit codes: 0 = accepted findings, 1 = high/critical findings (when gated),
+// Offline-only entry point for the composite GitHub Action.
+// Exit codes: 0 = clean or accepted findings, 1 = gated high/critical findings,
 // 2 = invalid input or operational/runtime failure.
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { analyze, formatReport } = require('./firewall-doctor');
 
-function mapAnalyzerExitCode(code, failOnHigh) {
-  if (code === 0) return 0;
-  if (code === 1) return failOnHigh ? 1 : 0;
-  return 2;
+function mapFindingsExitCode(hasHighOrCritical, failOnHigh) {
+  return hasHighOrCritical && failOnHigh ? 1 : 0;
 }
 
 function run(file, failOnHigh) {
@@ -23,29 +21,33 @@ function run(file, failOnHigh) {
     return 2;
   }
 
-  const resolved = path.resolve(file);
+  let config;
   try {
+    const resolved = path.resolve(file);
     if (!fs.statSync(resolved).isFile()) {
       console.error('Firewall Doctor Action: input file must be a regular file.');
       return 2;
     }
     fs.accessSync(resolved, fs.constants.R_OK);
+    config = fs.readFileSync(resolved, 'utf8');
   } catch {
     console.error('Firewall Doctor Action: input file is missing or unreadable.');
     return 2;
   }
 
-  const analyzer = path.join(__dirname, 'firewall-doctor.js');
-  const result = spawnSync(process.execPath, [analyzer, resolved], { stdio: 'inherit' });
-  if (result.error || result.status === null) {
-    console.error('Firewall Doctor Action: analyzer failed to start or was terminated.');
+  try {
+    const result = analyze(config);
+    console.log(formatReport(result));
+    const hasHighOrCritical = Boolean(result.summary.high || result.summary.critical);
+    return mapFindingsExitCode(hasHighOrCritical, failOnHigh === 'true');
+  } catch (error) {
+    console.error(`Firewall Doctor Action: analysis failed (${error && error.message ? error.message : 'unknown error'}).`);
     return 2;
   }
-  return mapAnalyzerExitCode(result.status, failOnHigh === 'true');
 }
 
 if (require.main === module) {
   process.exitCode = run(process.argv[2], process.argv[3] === undefined ? 'true' : process.argv[3]);
 }
 
-module.exports = { mapAnalyzerExitCode, run };
+module.exports = { mapFindingsExitCode, run };
